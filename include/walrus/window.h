@@ -1,11 +1,10 @@
 #ifndef WALRUS_WINDOW_H
 #define WALRUS_WINDOW_H
 
-#include "../backend/backend.h"
+#include "backend/backend.h"
 #include <stddef.h>
 
 typedef struct wr_window {
-
     char *title;
 
     int width;
@@ -26,5 +25,9 @@ wr_window_t *wr_create_window(
 void wr_window_destroy(
     wr_window_t *window
 );
+
+int wr_should_close(wr_window_t *window);
+
+void wr_poll_events();
 
 #endif

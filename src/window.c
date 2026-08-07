@@ -1,6 +1,6 @@
 #include "walrus/walrus.h"
 #include "walrus/backend/backend.h"
-#include "walrus/core/window.h"
+#include "walrus/window.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +11,7 @@ wr_window_t *wr_create_window(
   int height
 )
 {
-  wr_backend_t *backend = wr_backend();
+  wr_backend_t *backend = wr_get_backend();
 
   if (!backend)
   {
@@ -23,14 +23,12 @@ wr_window_t *wr_create_window(
     return NULL;
   }
 
-
   wr_window_t *window = malloc(sizeof(wr_window_t));
 
   if (!window)
   {
     return NULL;
   }
-
 
   window->title = malloc(strlen(title) + 1);
 
@@ -60,16 +58,11 @@ wr_window_t *wr_create_window(
   return window;
 }
 
-void wr_window_shutdown()
-{
-  wr_backend_t *backend = wr_backend();
-}
-
 void wr_window_destroy(
   wr_window_t *window
 )
 {
-  wr_backend_t *backend = wr_backend();
+  wr_backend_t *backend = wr_get_backend();
 
   if (!window)
   {
@@ -85,4 +78,15 @@ void wr_window_destroy(
 
   free(window->title);
   free(window);
+}
+
+int wr_should_close(wr_window_t *window) {
+  return window->should_close;
+}
+
+void wr_poll_events() {
+  wr_backend_t *backend = wr_get_backend();
+
+  if (backend && backend->poll_events)
+    backend->poll_events();
 }
