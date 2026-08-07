@@ -18,7 +18,7 @@ option(WALRUS_ENABLE_X11 "Enable X11 backend" ON)
 # Library sources
 set(WALRUS_SOURCES
   src/walrus.c
-  src/core/window.c
+  src/window.c
   src/backend/backend.c
 )
 
@@ -33,6 +33,7 @@ if(WALRUS_ENABLE_WAYLAND)
 
     list(APPEND WALRUS_SOURCES
       src/backend/wayland/wayland.c
+      src/backend/wayland/xdg-shell-protocol.c
     )
   else()
     message(WARNING "Wayland not found")

@@ -7,13 +7,16 @@ int main() {
   // Initialize the Walrus runtime
   wr_init();
 
-  // Detect the active display backend
-  if (wr_get_backend()->type == WR_BACKEND_WAYLAND) {
-    printf("Running on Wayland\n");
-  } else {
-    printf("Running on X11\n");
+  // create window
+  wr_window_t *window = wr_create_window("Hello, Walrus!", 800, 600);
+
+  while(wr_should_close(window) == 0) {
+    // Poll events
+    wr_poll_events();
   }
 
-  printf("Hello, World!");
+  wr_window_destroy(window);
+  wr_shutdown();
+
   return 0;
 }

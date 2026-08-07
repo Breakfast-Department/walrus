@@ -21,7 +21,6 @@ static int x11_init(void)
   return 0;
 }
 
-
 static void x11_shutdown(void)
 {
   if (display)
@@ -59,9 +58,17 @@ static void x11_destroy_window(wr_window_t *window)
 
 }
 
+
+static void x11_poll_events() 
+{
+
+}
+
+
 wr_backend_t x11_backend = {
   .type = WR_BACKEND_X11,
   .init = x11_init,
+  .poll_events = x11_poll_events,
   .shutdown = x11_shutdown,
   .create_window = x11_create_window,
   .destroy_window = x11_destroy_window,
