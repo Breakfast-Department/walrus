@@ -1,22 +1,15 @@
-// hello.c
+#include <stdio.h>
+#include <walrus/walrus.h>
+#include <walrus/core/window.h>
 
-#include "walrus/walrus.h"
-#include "stdio.h"
 
 int main() {
-  // Initialize the Walrus runtime
-  wr_init();
-
-  // create window
-  wr_window_t *window = wr_create_window("Hello, Walrus!", 800, 600);
-
-  while(wr_should_close(window) == 0) {
-    // Poll events
-    wr_poll_events();
+  if (!wr_init())
+  {
+    fprintf(stderr, "Failed initialized walrus\n");
   }
 
-  wr_window_destroy(window);
-  wr_shutdown();
+  WrWindow* window = wr_create_window("Hello, Walrus!", 800, 600);
 
   return 0;
 }
