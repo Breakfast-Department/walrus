@@ -17,8 +17,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ============================================================
 
 option(WALRUS_BUILD_EXAMPLES "Build examples" ON)
-option(WALRUS_ENABLE_WAYLAND "Enable Wayland backend" ON)
-option(WALRUS_ENABLE_X11 "Enable X11 backend" OFF)
+option(WALRUS_ENABLE_WAYLAND "Enable Wayland backend" ONN)
+option(WALRUS_ENABLE_X11 "Enable X11 backend" ON)
 
 # ============================================================
 # Dependencies
@@ -118,6 +118,11 @@ endif()
 
 add_library(walrus SHARED
     ${WALRUS_SOURCES}
+)
+
+target_compile_definitions(walrus PRIVATE
+    WALRUS_ENABLE_WAYLAND=$<BOOL:${WALRUS_ENABLE_WAYLAND}>
+    WALRUS_ENABLE_X11=$<BOOL:${WALRUS_ENABLE_X11}>
 )
 
 # ============================================================
