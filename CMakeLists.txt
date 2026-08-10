@@ -42,6 +42,11 @@ set(WALRUS_SOURCES
   # Core sources
   src/core/window.c
 
+  # Renderer sources
+  src/renderer/renderer.c
+  src/renderer/opengl/egl.c
+  src/renderer/opengl/opengl.c
+
   # External sources
   external/glad/src/egl.c
   external/glad/src/glad.c
@@ -54,8 +59,9 @@ set(WALRUS_SOURCES
 if(WALRUS_ENABLE_WAYLAND)
 
     pkg_check_modules(WAYLAND wayland-client)
+    pkg_check_modules(WAYLAND_EGL wayland-egl)
 
-    if(WAYLAND_FOUND)
+    if(WAYLAND_FOUND AND WAYLAND_EGL_FOUND)
 
         message(STATUS "Wayland backend enabled")
 
@@ -64,10 +70,20 @@ if(WALRUS_ENABLE_WAYLAND)
             src/backend/wayland/xdg-shell-protocol.c
         )
 
+    elseif(WAYLAND_FOUND)
+
+        message(WARNING "Wayland found but wayland-egl not found; backend disabled")
+
     else()
 
         message(WARNING "Wayland not found")
 
+    endif()
+
+    if(WAYLAND_EGL_FOUND)
+        list(APPEND WALRUS_INCLUDE_DIRS ${WAYLAND_EGL_INCLUDE_DIRS})
+        list(APPEND WALRUS_LIBRARY_DIRS ${WAYLAND_EGL_LIBRARY_DIRS})
+        list(APPEND WALRUS_LIBRARIES ${WAYLAND_EGL_LIBRARIES})
     endif()
 
 endif()
@@ -114,22 +130,26 @@ target_include_directories(walrus
 
     PRIVATE
         ${PROJECT_SOURCE_DIR}/external/glad/include
+        ${EGL_INCLUDE_DIRS}
+        ${WALRUS_INCLUDE_DIRS}
 )
 
 # ============================================================
-# EGL
+# EGL and extra library directories
 # ============================================================
-
-target_include_directories(walrus PRIVATE
-    ${EGL_INCLUDE_DIRS}
-)
 
 target_link_directories(walrus PRIVATE
     ${EGL_LIBRARY_DIRS}
+    ${WALRUS_LIBRARY_DIRS}
 )
+
+# ============================================================
+# Link libraries
+# ============================================================
 
 target_link_libraries(walrus PRIVATE
     ${EGL_LIBRARIES}
+    ${WALRUS_LIBRARIES}
 )
 
 # ============================================================
