@@ -1,160 +1,88 @@
 # Walrus
 
-Walrus is a modular C GUI toolkit for Linux. It provides a simple application API while isolating backend and renderer details from user code.
+**Walrus** is a modular C GUI toolkit for Linux with a simple application API and a backend-independent rendering architecture.
 
-## Overview
+Walrus is designed to hide platform-specific details such as Wayland, X11, EGL, and OpenGL behind a small and stable public API.
 
-Walrus focuses on native Linux desktop applications. It hides platform initialization and renderer setup so developers can write clean application logic without direct interaction with Wayland, X11, or OpenGL.
+> **Status:** Early development — API and architecture may change.
 
-## What Walrus Offers
+## Features
 
-- Simple, stable C API for window management and rendering
-- Backend abstraction for Wayland and X11
-- Renderer abstraction for GPU-backed presentation
-- A foundation for future renderer implementations
+* Native Linux GUI toolkit written in C
+* Wayland and X11 backend support
+* Backend abstraction
+* Renderer abstraction
+* GPU-backed rendering
+* Small public API
+* Designed for extensibility
 
-## Design Goals
+## Architecture
 
-- Keep the public interface concise and easy to use
-- Avoid leaking platform-specific details into application code
-- Separate backend and renderer implementations
-- Support growth without breaking the application interface
+Walrus separates application code from platform and rendering implementations:
 
-## Supported Platforms
+```text
+Application
+    │
+    ▼
+Walrus API
+    │
+    ├── Window
+    ├── Event Loop
+    └── Rendering
+         │
+         ├── OpenGL
+         ├── Vulkan
+         └── Software
+    │
+    ▼
+Backend
+    ├── Wayland
+    └── X11
+```
 
-- Wayland
-- X11
+The application only interacts with the public Walrus API. Backend and renderer implementations are handled internally by the toolkit.
+
+For more details, see [`docs/architecture.md`](docs/architecture.md).
 
 ## Requirements
 
-- Linux
-- C compiler
-- CMake 3.20 or newer
-- pkg-config
-- Wayland development libraries for Wayland support
-- X11 development libraries for X11 support
+* Linux
+* C compiler
+* CMake 3.20+
+* pkg-config
+* Wayland development libraries
+* X11 development libraries
 
-## Build
-
-```bash
-git clone https://github.com/example/walrus.git
-cd walrus
-cmake -B build
-cmake --build build
-```
-
-Install with:
-
-```bash
-sudo cmake --install build
-```
-
-## Quick Start
-
-A minimal Walrus application uses only the public API:
-
-```c
-#include <stdio.h>
-#include <walrus/walrus.h>
-#include <walrus/core/window.h>
-
-int main(void)
-{
-    if (wr_init() != 0)
-    {
-        fprintf(stderr, "Failed to initialize Walrus\n");
-        return 1;
-    }
-
-    WrWindow *window = wr_create_window("Hello, Walrus", 800, 600);
-    if (!window)
-    {
-        wr_shutdown();
-        return 1;
-    }
-
-    WrRenderSurface *surface = wr_window_get_surface(window);
-
-    for (int frame = 0; frame < 300; ++frame)
-    {
-        wr_poll_events();
-        wr_begin_frame(surface);
-        wr_clear(frame / 300.0f, 0.3f, 1.0f - frame / 300.0f, 1.0f);
-        wr_end_frame(surface);
-    }
-
-    wr_window_destroy(window);
-    wr_shutdown();
-    return 0;
-}
-```
-
-## Documentation
-
-See the `docs` directory for architecture and design details.
-
-## Status
-
-Walrus is in early development. The toolkit is designed for flexibility and gradual expansion.
-
----
-
-# Requirements
-
-## Linux
-
-Supported platforms:
-
-- Linux distributions
-- Wayland compositor
-- X11 display server
-
-Dependencies:
-
-- C compiler
-- CMake >= 3.20
-- pkg-config
-- Wayland development libraries
-- X11 development libraries
-
-Example (Arch Linux):
+### Arch Linux
 
 ```bash
 sudo pacman -S cmake gcc pkgconf wayland libx11
 ```
 
-Example (Debian/Ubuntu):
+### Debian / Ubuntu
 
 ```bash
 sudo apt install \
-cmake \
-gcc \
-pkg-config \
-libwayland-dev \
-libx11-dev
+    cmake \
+    gcc \
+    pkg-config \
+    libwayland-dev \
+    libx11-dev
 ```
 
----
+## Building
 
-# Building
-
-Clone repository:
+Clone the repository:
 
 ```bash
-git clone https://github.com/example/walrus.git
-
+git clone https://github.com/ezravln/walrus.git
 cd walrus
 ```
 
-Create build directory:
+Configure and build:
 
 ```bash
 cmake -B build
-```
-
-Build:
-
-```bash
 cmake --build build
 ```
 
@@ -164,125 +92,83 @@ Install:
 sudo cmake --install build
 ```
 
----
+## Example
 
-# Example
-
-Create a simple application:
+A minimal Walrus application:
 
 ```c
+#include <stdio.h>
+#include <stdlib.h>
+
 #include <walrus/walrus.h>
+#include <walrus/core/window.h>
 
-int main()
+int main(void)
 {
-    wr_app *app = wr_app_create();
+    if (wr_init() != 0)
+    {
+        fprintf(stderr, "Failed to initialize Walrus\n");
+        return EXIT_FAILURE;
+    }
 
-    wr_window *window =
-        wr_window_create(
-            "Walrus Example",
-            800,
-            600
+    WrWindow *window =
+        wr_create_window("Hello, Walrus", 800, 600);
+
+    if (!window)
+    {
+        wr_shutdown();
+        return EXIT_FAILURE;
+    }
+
+    WrRenderSurface *surface =
+        wr_window_get_surface(window);
+
+    while (!wr_window_should_close(window))
+    {
+        wr_poll_events();
+
+        wr_begin_frame(surface);
+
+        wr_clear(
+            0.1f,
+            0.1f,
+            0.1f,
+            1.0f
         );
 
-    wr_window_show(window);
+        wr_end_frame(surface);
+    }
 
-    wr_app_run(app);
+    wr_window_destroy(window);
+    wr_shutdown();
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 ```
 
-Compile:
+See [`examples/hello.c`](examples/hello.c) for a complete example.
 
-```bash
-gcc example.c \
-    -lwalrus \
-    -o example
-```
-
-Run:
-
-```bash
-./example
-```
-
----
-
-# Development Roadmap
-
-## Phase 1 — Core
-
-- [ ] Application system
-- [ ] Event loop
-- [ ] Window abstraction
-- [ ] Wayland backend
-- [ ] X11 backend
-
-## Phase 2 — Rendering
-
-- [ ] Software renderer
-- [ ] OpenGL renderer
-- [ ] Vulkan renderer
-
-## Phase 3 — Widgets
-
-- [ ] Button
-- [ ] Label
-- [ ] Text input
-- [ ] Containers
-- [ ] Layout engine
-
-## Phase 4 — Advanced
-
-- [ ] Theme engine
-- [ ] Animation system
-- [ ] Accessibility support
-- [ ] Internationalization
-
----
-
-# Contributing
+## Contributing
 
 Contributions are welcome.
 
-Before contributing:
+Before opening a pull request, please read [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-1. Fork the repository.
-2. Create a feature branch.
-
-```bash
-git checkout -b feature/new-widget
-```
-
-3. Commit changes.
+Typical workflow:
 
 ```bash
-git commit -m "Add new widget"
+git checkout -b feature/my-feature
+git commit -m "Add my feature"
+git push origin feature/my-feature
 ```
 
-4. Push branch.
+Then open a Pull Request.
 
-```bash
-git push origin feature/new-widget
-```
-
-5. Open a Pull Request.
-
----
-
-# License
+## License
 
 Walrus is licensed under the MIT License.
 
-See [LICENSE](LICENSE) for details.
-
----
-
-# Status
-
-Walrus is currently in early development.
-
-The API may change while the core architecture is being designed.
+See [`LICENSE`](LICENSE) for details.
 
 ---
 
