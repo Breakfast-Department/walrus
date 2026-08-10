@@ -1,19 +1,15 @@
-// hello.c
+#include <stdio.h>
+#include <walrus/walrus.h>
+#include <walrus/core/window.h>
 
-#include "walrus/walrus.h"
-#include "stdio.h"
 
 int main() {
-  // Initialize the Walrus runtime
-  wr_init();
-
-  // Detect the active display backend
-  if (wr_get_backend()->type == WR_BACKEND_WAYLAND) {
-    printf("Running on Wayland\n");
-  } else {
-    printf("Running on X11\n");
+  if (!wr_init())
+  {
+    fprintf(stderr, "Failed initialized walrus\n");
   }
 
-  printf("Hello, World!");
+  WrWindow* window = wr_create_window("Hello, Walrus!", 800, 600);
+
   return 0;
 }

@@ -1,88 +1,52 @@
-#include "walrus/walrus.h"
-#include "walrus/backend/backend.h"
 #include "walrus/core/window.h"
-
+#include "walrus/backend/backend.h"
 #include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
 
-wr_window_t *wr_create_window(
-  const char *title,
-  int width,
-  int height
-)
+struct WrWindow {
+  char* title;
+  int width, height;
+
+  int should_close;
+
+  void* backend_data;
+};
+
+WrWindow* wr_create_window(char* title, int width, int height)
 {
-  wr_backend_t *backend = wr_backend();
-
-  if (!backend)
-  {
-    backend = wr_backend_get();
-  }
-
-  if (!backend)
-  {
-    return NULL;
-  }
-
-
-  wr_window_t *window = malloc(sizeof(wr_window_t));
-
-  if (!window)
-  {
-    return NULL;
-  }
-
-
-  window->title = malloc(strlen(title) + 1);
-
-  if (!window->title)
-  {
-    free(window);
-    return NULL;
-  }
-
-  strcpy(window->title, title);
-
+  WrWindow* window = calloc(1, sizeof(WrWindow));
+  window->title = title;
   window->width = width;
   window->height = height;
   window->should_close = 0;
-  window->backend_data = NULL;
 
-
-    /*
-        Backend yang menangani:
-        - wl_surface / xdg_toplevel
-        - X11 Window
-    */
-
-  backend->create_window(window);
-
-
+  WrBackend* backend = wr_get_backend();
+  if (!backend)
+  {
+    fprintf(stderr, "Backend is not initialized\n");
+    return NULL;
+  }
+  window->backend_data = backend->create_window(title);
+  if (!window->backend_data)
+  {
+    fprintf(stderr, "Failed create backend data\n");
+    return NULL;
+  }
   return window;
 }
 
-void wr_window_shutdown()
+void wr_window_destroy(WrWindow* window)
 {
-  wr_backend_t *backend = wr_backend();
-}
-
-void wr_window_destroy(
-  wr_window_t *window
-)
-{
-  wr_backend_t *backend = wr_backend();
-
   if (!window)
+    return;
+
+  WrBackend* backend = wr_get_backend();
+  if (!backend)
   {
+    fprintf(stderr, "Backend is not initialized\n");
     return;
   }
 
-
-  if (backend && backend->destroy_window)
-  {
-    backend->destroy_window(window);
-  }
-
-
-  free(window->title);
+  backend->destroy_window(window->backend_data);
   free(window);
 }
