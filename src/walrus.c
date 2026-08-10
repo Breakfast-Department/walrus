@@ -1,12 +1,13 @@
-#include "walrus/walrus.h"
-#include "walrus/core/window.h"
+#include <walrus/walrus.h>
 
-static wr_backend_t *backend = NULL;
+int wr_init(void)
+{
+  WrBackend* backend = wr_backend_init();
+  if (!backend)
+    return -1;
 
-void wr_init() {
-  backend = wr_backend_get();
-}
+  if (!backend->init())
+    return -1;
 
-wr_backend_t *wr_get_backend() {
-  return backend;
+  return 0;
 }
