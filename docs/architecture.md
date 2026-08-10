@@ -1,243 +1,65 @@
 # Walrus Architecture
 
-Walrus is designed as a modular C GUI toolkit for Linux. Its architecture separates the public API, core window/input system, platform backends, and rendering implementations.
+Walrus is built as a modular toolkit for Linux. It keeps the application API separate from platform backends and renderer implementations.
 
-The main goal is to keep platform-specific and graphics-API-specific code isolated from the higher-level UI system.
+## Design Overview
 
-## Architecture Overview
+Walrus has three main layers:
 
-```text
-                         ┌──────────────────┐
-                         │    Walrus API    │
-                         │   walrus.h       │
-                         └────────┬─────────┘
-                                  │
-                    ┌─────────────▼─────────────┐
-                    │           Core            │
-                    │                           │
-                    │  Window / Event / Input   │
-                    └─────────────┬─────────────┘
-                                  │
-                    ┌─────────────▼─────────────┐
-                    │          Backend          │
-                    │                           │
-                    │   Wayland  │  X11         │
-                    └─────────────┬─────────────┘
-                                  │
-                           Native Surface
-                                  │
-                    ┌─────────────▼─────────────┐
-                    │         Renderer          │
-                    │                           │
-                    │ OpenGL │ Vulkan │ Custom  │
-                    └───────────────────────────┘
-```
+- **Public API**: the interface used by applications
+- **Backend**: platform-specific window and event handling
+- **Renderer**: graphics output and presentation
 
-Each layer has a specific responsibility and should avoid depending on implementation details from other layers.
+Each layer is designed to be independent so that the toolkit can support multiple backends and renderer implementations without changing application code.
 
----
+## Public API
 
-# 1. Public API
+The public API is the only layer application code should use directly. It provides:
 
-The public API is exposed through `walrus.h` and other public headers.
+- initialization and shutdown
+- window creation and destruction
+- event polling
+- frame lifecycle and clearing
 
-Applications should interact with Walrus through this layer instead of directly accessing Wayland, X11, EGL, or OpenGL.
+This layer should remain stable even as backend or renderer implementations evolve.
 
-```text
-Application
-     │
-     ▼
-Walrus API
-```
+## Core Concepts
 
-The public API should remain stable even if the internal backend or renderer changes.
+The core contains platform-independent abstractions such as windows, event polling, and rendering surfaces. It does not expose platform-specific or graphics-API-specific types.
 
----
+## Backend Layer
 
-# 2. Core Layer
+Backends implement the platform-specific behavior for native windows and event delivery. Current backends include:
 
-The core layer contains platform-independent concepts.
+- Wayland
+- X11
 
-```text
-include/walrus/core/
-src/core/
-```
-
-Examples:
+The backend layer is responsible for:
 
-* `WrWindow`
-* events
-* input
-* application state
-* window lifecycle
+- connecting to the display server
+- creating and destroying native windows
+- polling platform events
 
-The core layer should not contain:
+## Renderer Layer
 
-```c
-struct wl_surface;
-EGLSurface;
-VkSurfaceKHR;
-Display;
-Window;
-```
+The renderer layer handles frame setup, content drawing, and buffer presentation. Current implementation work focuses on OpenGL.
 
-Instead, platform-specific data should remain behind an abstraction.
+The renderer interface is intentionally generic so additional backends such as Vulkan or custom renderers can be added later.
 
-For example:
+## Render Surfaces
 
-```c
-typedef struct WrWindow {
-    char *title;
-    int width;
-    int height;
+A render surface connects a window to a renderer. This allows the toolkit to manage presentation without exposing native graphics handles in application code.
 
-    int should_close;
+## Goals
 
-    void *backend_data;
-} WrWindow;
-```
+Walrus is intended to provide a practical foundation for Linux GUI applications with:
 
-The core knows that backend data exists, but does not need to know its implementation.
+- a simple C API
+- a modular backend strategy
+- a renderer abstraction that can grow over time
 
----
+For implementation details and design rationale, see the rest of the documentation.
 
-# 3. Backend Layer
-
-The backend layer handles communication with the operating-system window system.
-
-```text
-include/walrus/backend/
-src/backend/
-```
-
-Current backends:
-
-```text
-Wayland
-X11
-```
-
-The backend is responsible for:
-
-* connecting to the display server
-* discovering required protocols
-* creating native windows/surfaces
-* destroying native windows
-* processing platform events
-* receiving platform input events
-
-The backend should expose a common interface.
-
-Conceptually:
-
-```c
-typedef struct WrBackend {
-    int (*init)(void);
-    void (*shutdown)(void);
-
-    void (*poll_events)(void);
-
-    void *(*create_window)(
-        char *title
-    );
-
-    void (*destroy_window)(
-        void *data
-    );
-} WrBackend;
-```
-
-The implementation can then differ:
-
-```text
-WrBackend
-   │
-   ├── Wayland
-   │     └── wl_display
-   │         wl_surface
-   │         xdg_surface
-   │         xdg_toplevel
-   │
-   └── X11
-         └── Display
-             Window
-```
-
-The rest of Walrus does not need to know which backend is active.
-
----
-
-# 4. Renderer Layer
-
-The renderer layer provides an abstraction over graphics APIs.
-
-```text
-include/walrus/renderer/
-src/renderer/
-```
-
-Possible implementations:
-
-```text
-OpenGL
-```
-
-The renderer should not be tightly coupled to a specific window-system backend.
-
-Conceptually:
-
-```text
-                 WrRenderer
-                     │
-          ┌──────────┼──────────┐
-          │          │          │
-       OpenGL      Vulkan     Custom
-```
-
-The renderer interface can contain operations such as:
-
-```c
-typedef struct WrRenderer {
-    int (*init)(void);
-    void (*shutdown)(void);
-
-    WrRenderSurface *(*create_surface)(
-        WrWindow *window
-    );
-
-    void (*destroy_surface)(
-        WrRenderSurface *surface
-    );
-
-    int (*begin_frame)(
-        WrRenderSurface *surface
-    );
-
-    int (*end_frame)(
-        WrRenderSurface *surface
-    );
-
-    void (*draw_batch)(
-        WrRenderSurface *surface,
-        WrBatch *batch
-    );
-} WrRenderer;
-```
-
-The interface should remain independent of OpenGL and Vulkan.
-
----
-
-# 5. Render Surface
-
-A render surface represents the connection between a Walrus window and a renderer.
-
-It should not expose graphics API-specific types.
-
-Conceptually:
-
-```c
-typedef struct WrRenderSurface {
     void *native_data;
     void *renderer_data;
 } WrRenderSurface;
