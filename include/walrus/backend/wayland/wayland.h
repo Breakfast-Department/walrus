@@ -1,15 +1,23 @@
-#ifndef WALRUS_WAYLAND_H
-#define WALRUS_WAYLAND_H
+#ifndef WR_WAYLAND_H
+#define WR_WAYLAND_H
 
-#include "../backend.h"
-#include "xdg-shell-client-protocol.h"
+#include <walrus/backend/backend.h>
+#include <wayland-client-protocol.h>
 
-extern wr_backend_t wl_backend;
+extern WrBackend wr_wayland_backend;
 
-typedef struct wl_window_data {
-    struct wl_surface *surface;
-    struct xdg_surface *xdg_surface;
-    struct xdg_toplevel *xdg_toplevel;
-} wl_window_data_t;
+typedef struct WrWayland {
+  struct wl_display* display;
+  struct wl_registry* registry;
+
+  struct wl_compositor* compositor;
+  struct xdg_wm_base* wm_base;
+} WrWayland;
+
+typedef struct WrWaylandWindowData {
+  struct wl_surface *surface;
+  struct xdg_surface *xdg_surface;
+  struct xdg_toplevel *xdg_toplevel;
+} WrWaylandWindowData;
 
 #endif

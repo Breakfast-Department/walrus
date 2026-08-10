@@ -29,7 +29,7 @@
  */
 
 #include <stdbool.h>
-#include <stdlib.h>
+// #include <stdlib.h>
 #include <stdint.h>
 #include "wayland-util.h"
 
@@ -181,4 +181,3 @@ WL_PRIVATE const struct wl_interface xdg_popup_interface = {
 	3, xdg_popup_requests,
 	3, xdg_popup_events,
 };
-

@@ -1,24 +1,30 @@
-#ifndef WALRUS_BACKEND_H
-#define WALRUS_BACKEND_H
+#ifndef WR_BACKEND_H
+#define WR_BACKEND_H
 
-#include "../window.h"
+#include <wayland-client-core.h>
+#include <wayland-client-protocol.h>
 
-typedef enum {
-    WR_BACKEND_WAYLAND,
-    WR_BACKEND_X11
-} wr_backend_type;
-
-typedef struct {
-  wr_backend_type type;
+typedef struct WrBackend {
   int (*init)(void);
-  void (*poll_events)(void);
-
   void (*shutdown)(void);
 
-  void (*create_window)(wr_window_t *window);
-  void (*destroy_window)(wr_window_t *window);
-} wr_backend_t;
+  void (*poll_events)(void);
 
-wr_backend_t *wr_backend_get();
+  void* (*create_window)(char*);
+  void (*destroy_window)(void*);
+
+  // void (*show_window)(void);
+  // void (*hide_window)(void);
+
+  // void (*set_title)(void);
+  // void (*set_size)(void);
+
+  // void (*request_redraw)(void);
+  // void (*get_window_size)(void);
+
+} WrBackend;
+
+WrBackend* wr_backend_init(void);
+WrBackend* wr_get_backend(void);
 
 #endif
