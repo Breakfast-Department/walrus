@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: "Wayland Backend"
+            cmake_flags: "-DWALRUS_ENABLE_WAYLAND=ON -DWALRUS_ENABLE_X11=OFF"
+          - name: "X11 Backend"
+            cmake_flags: "-DWALRUS_ENABLE_WAYLAND=OFF -DWALRUS_ENABLE_X11=ON"
+          - name: "Dual Backend (Wayland + X11)"
+            cmake_flags: "-DWALRUS_ENABLE_WAYLAND=ON -DWALRUS_ENABLE_X11=ON"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            gcc \
+            pkg-config \
+            libwayland-dev \
+            libx11-dev \
+            libegl1-mesa-dev \
+            libgl1-mesa-dev \
+            wayland-protocols
+
+      - name: Configure CMake
+        run: |
+          cmake -B build ${{ matrix.config.cmake_flags }} -DWALRUS_BUILD_EXAMPLES=ON
+
+      - name: Build
+        run: |
+          cmake --build build --config Release
