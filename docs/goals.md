@@ -40,11 +40,9 @@ Walrus
 
 # Status Legend
 
-```text
-[✓] Implemented
-[~] Partially implemented
-[ ] Not implemented
-```
+* [X] Implemented
+* [ ] Partially implemented
+* [ ] Not implemented
 
 ---
 
@@ -52,13 +50,13 @@ Walrus
 
 ## Window System
 
-* [✓] `WrWindow` abstraction
-* [✓] Window title
-* [✓] Window width and height
-* [✓] Backend-specific window data
-* [✓] Window creation abstraction
-* [✓] Window destruction abstraction
-* [~] Window lifecycle management
+* [X] `WrWindow` abstraction
+* [X] Window title
+* [X] Window width and height
+* [X] Backend-specific window data
+* [X] Window creation abstraction
+* [X] Window destruction abstraction
+* [ ] Window lifecycle management
 * [ ] Window resize handling
 * [ ] Window position
 * [ ] Window state management
@@ -72,7 +70,7 @@ Walrus
 
 # Event System
 
-* [~] `WrEvent` foundation
+* [ ] `WrEvent` foundation
 * [ ] Event abstraction
 * [ ] Event queue
 * [ ] Event polling API
@@ -88,7 +86,7 @@ Walrus
 
 # Input System
 
-* [~] Input abstraction
+* [ ] Input abstraction
 * [ ] Keyboard state
 * [ ] Mouse state
 * [ ] Mouse position
@@ -109,14 +107,14 @@ The input system should remain independent from the UI system so that it can als
 
 ## Backend Abstraction
 
-* [✓] `WrBackend`
-* [✓] Backend function-pointer interface
-* [✓] Backend initialization
-* [✓] Backend shutdown
-* [✓] Event polling interface
-* [✓] Window creation interface
-* [✓] Window destruction interface
-* [~] Backend selection
+* [X] `WrBackend`
+* [X] Backend function-pointer interface
+* [X] Backend initialization
+* [X] Backend shutdown
+* [X] Event polling interface
+* [X] Window creation interface
+* [X] Window destruction interface
+* [ ] Backend selection
 * [ ] Runtime backend selection API
 * [ ] Backend capability detection
 
@@ -124,17 +122,17 @@ The input system should remain independent from the UI system so that it can als
 
 # Wayland
 
-* [✓] Wayland display connection
-* [✓] Registry discovery
-* [✓] `wl_compositor`
-* [✓] `xdg_wm_base`
-* [✓] `wl_surface`
-* [✓] `xdg_surface`
-* [✓] `xdg_toplevel`
-* [✓] Window title
-* [✓] Initial surface commit
-* [~] Configure event foundation
-* [~] Window lifecycle
+* [X] Wayland display connection
+* [X] Registry discovery
+* [X] `wl_compositor`
+* [X] `xdg_wm_base`
+* [X] `wl_surface`
+* [X] `xdg_surface`
+* [X] `xdg_toplevel`
+* [X] Window title
+* [X] Initial surface commit
+* [ ] Window lifecycle
+* [ ] Configure event foundation
 * [ ] Proper configure/resize handling
 * [ ] `xdg_toplevel.configure`
 * [ ] Window close event
@@ -156,7 +154,7 @@ The input system should remain independent from the UI system so that it can als
 
 The X11 backend currently exists primarily as an architectural placeholder.
 
-* [~] X11 backend structure
+* [X] X11 backend structure
 * [ ] X11 display connection
 * [ ] X11 window creation
 * [ ] X11 window destruction
@@ -173,11 +171,11 @@ The X11 backend currently exists primarily as an architectural placeholder.
 
 ## Renderer Abstraction
 
-* [✓] `WrRenderer`
-* [✓] Renderer function-pointer architecture
-* [~] Renderer initialization
-* [~] Renderer shutdown
-* [~] Render surface abstraction
+* [X] `WrRenderer`
+* [X] Renderer function-pointer architecture
+* [ ] Renderer initialization
+* [ ] Renderer shutdown
+* [ ] Render surface abstraction
 * [ ] Frame lifecycle
 * [ ] Begin frame
 * [ ] End frame
@@ -196,10 +194,10 @@ The OpenGL renderer currently exists as a **foundation/skeleton**.
 
 ## OpenGL API
 
-* [✓] `opengl.h`
-* [~] OpenGL renderer structure
-* [~] Function declarations
-* [~] Function definitions
+* [X] `opengl.h`
+* [ ] OpenGL renderer structure
+* [ ] Function declarations
+* [ ] Function definitions
 * [ ] OpenGL context initialization
 * [ ] OpenGL function loading
 * [ ] OpenGL state initialization
@@ -220,10 +218,10 @@ The OpenGL renderer currently exists as a **foundation/skeleton**.
 
 EGL currently exists as a **minimal abstraction layer**.
 
-* [✓] `egl.h`
-* [✓] `egl.c`
-* [✓] EGL API structure
-* [~] EGL abstraction
+* [X] `egl.h`
+* [X] `egl.c`
+* [X] EGL API structure
+* [ ] EGL abstraction
 * [ ] EGL display initialization
 * [ ] EGL configuration selection
 * [ ] EGL context creation
@@ -241,11 +239,11 @@ The current EGL implementation is intentionally minimal and serves as the founda
 
 # GLAD
 
-* [✓] GLAD integration
-* [✓] OpenGL loader source
-* [✓] EGL loader source
-* [✓] GLAD headers
-* [~] Loader initialization
+* [X] GLAD integration
+* [X] OpenGL loader source
+* [X] EGL loader source
+* [X] GLAD headers
+* [ ] Loader initialization
 * [ ] Renderer initialization integration
 
 GLAD is responsible only for loading graphics API functions.
@@ -256,8 +254,8 @@ It does not manage windows, surfaces, or rendering resources.
 
 # Vertex System
 
-* [✓] `vertex.h`
-* [~] Vertex abstraction
+* [X] `vertex.h`
+* [ ] Vertex abstraction
 * [ ] Vertex buffer implementation
 * [ ] Vertex attribute configuration
 * [ ] GPU upload
@@ -268,8 +266,8 @@ It does not manage windows, surfaces, or rendering resources.
 
 # Batch System
 
-* [✓] `batch.h`
-* [~] `WrBatch` foundation
+* [X] `batch.h`
+* [ ] `WrBatch` foundation
 * [ ] Dynamic vertex storage
 * [ ] Dynamic index storage
 * [ ] Texture grouping
@@ -284,7 +282,7 @@ The batch system is intended to combine geometry from multiple UI objects into f
 
 # Shader System
 
-* [~] `shader.h`
+* [ ] `shader.h`
 * [ ] Shader abstraction
 * [ ] Shader creation
 * [ ] Shader compilation
@@ -349,12 +347,12 @@ The UI layer is planned to sit above the core and renderer.
 
 # Documentation
 
-* [✓] `architecture.md`
-* [✓] `rendering.md`
-* [✓] `wayland.md`
-* [✓] `input.md`
-* [✓] `goals.md`
-* [~] API documentation
+* [X] `architecture.md`
+* [X] `rendering.md`
+* [X] `wayland.md`
+* [X] `input.md`
+* [X] `goals.md`
+* [ ] API documentation
 * [ ] Developer documentation
 * [ ] Renderer implementation guide
 * [ ] Backend implementation guide
@@ -364,12 +362,12 @@ The UI layer is planned to sit above the core and renderer.
 
 # Build System
 
-* [✓] CMake project
-* [✓] Automatic source discovery
-* [✓] GLAD integration
-* [✓] Shared library build
-* [✓] Example application
-* [~] Installation rules
+* [X] CMake project
+* [X] Automatic source discovery
+* [X] GLAD integration
+* [X] Shared library build
+* [X] Example application
+* [ ] Installation rules
 * [ ] Public header installation
 * [ ] `pkg-config`
 * [ ] CMake package support
@@ -406,17 +404,17 @@ The goal of `v0.1` is to establish a functional platform and rendering foundatio
 
 ### Required
 
-* [✓] Core window abstraction
-* [✓] Backend abstraction
-* [✓] Wayland connection
-* [✓] Wayland window creation
-* [~] Event system
-* [~] Renderer abstraction
-* [~] EGL abstraction
-* [~] OpenGL renderer structure
-* [✓] GLAD integration
-* [✓] CMake build
-* [✓] Basic example
+* [X] Core window abstraction
+* [X] Backend abstraction
+* [X] Wayland connection
+* [X] Wayland window creation
+* [ ] Event system
+* [ ] Renderer abstraction
+* [ ] EGL abstraction
+* [ ] OpenGL renderer structure
+* [X] GLAD integration
+* [X] CMake build
+* [X] Basic example
 
 ### Not required
 
