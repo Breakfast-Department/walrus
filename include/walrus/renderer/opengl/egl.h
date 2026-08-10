@@ -15,7 +15,7 @@ typedef struct WrEGL {
 
 int wr_egl_init(
   WrEGL* egl,
-  void* native_window
+  void* native_display
 );
 
 int wr_egl_create_surface(
@@ -24,6 +24,25 @@ int wr_egl_create_surface(
 );
 
 int wr_egl_create_context(
+  WrEGL* egl
+);
+
+int wr_egl_make_current(
+  WrEGL* egl,
+  EGLSurface surface
+);
+
+int wr_egl_swap_buffers(
+  WrEGL* egl,
+  EGLSurface surface
+);
+
+void wr_egl_destroy_surface(
+  WrEGL* egl,
+  EGLSurface surface
+);
+
+void wr_egl_destroy(
   WrEGL* egl
 );
 

@@ -10,8 +10,11 @@ typedef struct WrBackend {
 
   void (*poll_events)(void);
 
-  void* (*create_window)(char*);
+  void* (*create_window)(void*, char*, int, int);
   void (*destroy_window)(void*);
+
+  void* (*get_native_display)(void);
+  void* (*get_native_window)(void*);
 
   // void (*show_window)(void);
   // void (*hide_window)(void);

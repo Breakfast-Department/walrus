@@ -1,172 +1,101 @@
 # Walrus
 
-<p align="center">
-  <b>A modern C GUI toolkit for Linux, built for Wayland and X11.</b>
-</p>
-
-<p align="center">
-  Lightweight • Native • Cross-backend • Written in C
-</p>
-
----
+Walrus is a modular C GUI toolkit for Linux. It provides a simple application API while isolating backend and renderer details from user code.
 
 ## Overview
 
-**Walrus** is a modern GUI toolkit written in pure C, designed to provide a simple and efficient way to build native Linux desktop applications.
+Walrus focuses on native Linux desktop applications. It hides platform initialization and renderer setup so developers can write clean application logic without direct interaction with Wayland, X11, or OpenGL.
 
-Walrus provides an abstraction layer above low-level display protocols such as **Wayland** and **X11**, allowing developers to create applications without directly handling compositor communication, window management, input events, and rendering systems.
+## What Walrus Offers
 
-The goal of Walrus is to create a lightweight alternative to existing GUI frameworks while maintaining a simple C API, high performance, and native Linux integration.
+- Simple, stable C API for window management and rendering
+- Backend abstraction for Wayland and X11
+- Renderer abstraction for GPU-backed presentation
+- A foundation for future renderer implementations
 
----
+## Design Goals
 
-## Features
+- Keep the public interface concise and easy to use
+- Avoid leaking platform-specific details into application code
+- Separate backend and renderer implementations
+- Support growth without breaking the application interface
 
-### Core
+## Supported Platforms
 
-- Native C API
-- Application lifecycle management
-- Event loop system
-- Window management
-- Input handling
-- Object system
-- Modular backend architecture
+- Wayland
+- X11
 
-### Rendering
+## Requirements
 
-- Hardware accelerated rendering support
-- OpenGL support
-- Vulkan support (planned)
-- Custom rendering pipeline
+- Linux
+- C compiler
+- CMake 3.20 or newer
+- pkg-config
+- Wayland development libraries for Wayland support
+- X11 development libraries for X11 support
 
-### Backends
+## Build
 
-- Wayland support
-- X11 compatibility
-- Extensible backend architecture
+```bash
+git clone https://github.com/example/walrus.git
+cd walrus
+cmake -B build
+cmake --build build
+```
 
-### UI Toolkit
+Install with:
 
-- Window
-- Button
-- Label
-- Text input
-- Layout system
-- Theme system
-- Custom widgets
+```bash
+sudo cmake --install build
+```
 
----
+## Quick Start
 
-## Philosophy
-
-Walrus follows several design principles:
-
-### Simple API
-
-Developers should be able to create applications without dealing with low-level system details.
-
-Example:
+A minimal Walrus application uses only the public API:
 
 ```c
+#include <stdio.h>
 #include <walrus/walrus.h>
+#include <walrus/core/window.h>
 
-int main()
+int main(void)
 {
-    wr_app *app = wr_app_create();
+    if (wr_init() != 0)
+    {
+        fprintf(stderr, "Failed to initialize Walrus\n");
+        return 1;
+    }
 
-    wr_window *window =
-        wr_window_create(
-            "Hello Walrus",
-            800,
-            600
-        );
+    WrWindow *window = wr_create_window("Hello, Walrus", 800, 600);
+    if (!window)
+    {
+        wr_shutdown();
+        return 1;
+    }
 
-    wr_app_run(app);
+    WrRenderSurface *surface = wr_window_get_surface(window);
 
+    for (int frame = 0; frame < 300; ++frame)
+    {
+        wr_poll_events();
+        wr_begin_frame(surface);
+        wr_clear(frame / 300.0f, 0.3f, 1.0f - frame / 300.0f, 1.0f);
+        wr_end_frame(surface);
+    }
+
+    wr_window_destroy(window);
+    wr_shutdown();
     return 0;
 }
 ```
 
----
+## Documentation
 
-### Native First
+See the `docs` directory for architecture and design details.
 
-Walrus does not try to emulate another operating system's design.
+## Status
 
-It is built specifically for Linux desktop environments with first-class support for:
-
-- Wayland
-- X11
-- Linux graphics stack
-
----
-
-### Lightweight Architecture
-
-Walrus is designed as a library, not a complete desktop environment.
-
-Application developers choose their own:
-
-- Rendering backend
-- Window behavior
-- Application structure
-
----
-
-# Architecture
-
-```
-Application
-     |
-     |
- Walrus API
-     |
- +----------------+
- | Core           |
- | Event System   |
- | Widget System  |
- | Layout Engine  |
- +----------------+
-     |
- +----------------+
- | Backend Layer  |
- +----------------+
-     |
- +------------+
- | Wayland    |
- | X11        |
- +------------+
-     |
- Linux System
-```
-
----
-
-# Project Structure
-
-```
-walrus/
-
-├── include/
-│   └── walrus/
-│       ├── walrus.h
-│       ├── window.h
-│       └── widget.h
-│
-├── src/
-│   ├── core/
-│   ├── widgets/
-│   ├── renderer/
-│   └── backend/
-│       ├── wayland/
-│       └── x11/
-│
-├── examples/
-│   └── hello.c
-│
-├── CMakeLists.txt
-└── README.md
-```
+Walrus is in early development. The toolkit is designed for flexibility and gradual expansion.
 
 ---
 
