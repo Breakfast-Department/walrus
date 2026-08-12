@@ -1,9 +1,6 @@
 #ifndef WR_BACKEND_H
 #define WR_BACKEND_H
 
-#include <wayland-client-core.h>
-#include <wayland-client-protocol.h>
-
 typedef struct WrBackend {
   int (*init)(void);
   void (*shutdown)(void);
