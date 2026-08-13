@@ -33,6 +33,10 @@ set(WALRUS_SOURCES
   src/renderer/renderer.c
   src/renderer/opengl/egl.c
   src/renderer/opengl/opengl.c
+  src/renderer/opengl/batch.c
+
+  # UI sources
+  src/ui/widget.c
 
   # External sources
   external/glad/src/egl.c
