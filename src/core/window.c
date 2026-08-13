@@ -1,6 +1,7 @@
 #include "walrus/core/window.h"
 #include "walrus/backend/backend.h"
 #include "walrus/renderer/renderer.h"
+#include "walrus/ui/widget.h"
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -102,4 +103,15 @@ void wr_window_set_should_close(WrWindow* window, int value)
   if (!window)
     return;
   window->should_close = value;
+}
+
+void wr_window_draw_widget(WrWindow* window, struct WrWidget* widget)
+{
+  if (!window || !widget)
+    return;
+
+  if (widget->render)
+  {
+    widget->render(widget, window->render_surface);
+  }
 }
