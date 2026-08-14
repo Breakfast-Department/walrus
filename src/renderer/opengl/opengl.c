@@ -135,8 +135,71 @@ static void wr_opengl_draw_batch(
   WrBatch *batch
 )
 {
-  (void)surface;
-  (void)batch;
+  if (!surface || !batch || batch->vertex_count == 0 || batch->index_count == 0)
+    return;
+
+  static GLuint prog = 0;
+  static GLuint vao = 0;
+  static GLuint vbo = 0;
+  static GLuint ebo = 0;
+
+  if (prog == 0)
+  {
+    const char *vsrc =
+      "#version 330 core\n"
+      "layout(location = 0) in vec2 aPos;\n"
+      "layout(location = 1) in vec4 aColor;\n"
+      "layout(location = 2) in vec2 aUV;\n"
+      "out vec4 vColor;\n"
+      "void main() { vColor = aColor; gl_Position = vec4(aPos, 0.0, 1.0); }\n";
+
+    const char *fsrc =
+      "#version 330 core\n"
+      "in vec4 vColor;\n"
+      "out vec4 FragColor;\n"
+      "void main() { FragColor = vColor; }\n";
+
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vs, 1, &vsrc, NULL);
+    glCompileShader(vs);
+
+    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fs, 1, &fsrc, NULL);
+    glCompileShader(fs);
+
+    prog = glCreateProgram();
+    glAttachShader(prog, vs);
+    glAttachShader(prog, fs);
+    glLinkProgram(prog);
+
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+  }
+
+  glBindVertexArray(vao);
+
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, batch->vertex_count * sizeof(WrVertex), batch->vertices, GL_DYNAMIC_DRAW);
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, batch->index_count * sizeof(uint32_t), batch->indices, GL_DYNAMIC_DRAW);
+
+  /* vertex layout: x,y (2), r,g,b,a (4), u,v (2) */
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(WrVertex), (void*)offsetof(WrVertex, x));
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(WrVertex), (void*)offsetof(WrVertex, r));
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(WrVertex), (void*)offsetof(WrVertex, u));
+
+  glUseProgram(prog);
+  glDrawElements(GL_TRIANGLES, (GLsizei)batch->index_count, GL_UNSIGNED_INT, 0);
+
+  glBindVertexArray(0);
 }
 
 WrRenderer wr_opengl_renderer = {
