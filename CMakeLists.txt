@@ -171,6 +171,7 @@ if(WALRUS_BUILD_EXAMPLES)
   target_link_libraries(walrus-example
     PRIVATE
       walrus
+      m
   )
 
 endif()

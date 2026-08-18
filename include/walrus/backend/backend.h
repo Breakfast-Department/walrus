@@ -13,6 +13,9 @@ typedef struct WrBackend {
   void* (*get_native_display)(void);
   void* (*get_native_window)(void*);
 
+  /* Resize the native window */
+  void (*resize_window)(void*, int, int);
+
   // void (*show_window)(void);
   // void (*hide_window)(void);
 
