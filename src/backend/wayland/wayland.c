@@ -107,6 +107,32 @@ static void pointer_motion(void *data, struct wl_pointer *wl_pointer, uint32_t t
   g_pointer_y = wl_fixed_to_int(surface_y);
 }
 
+static int g_maximized = 0;
+
+int wr_window_is_maximized(void)
+{
+  return g_maximized;
+}
+
+static uint32_t get_resize_edge(int x, int y, int w, int h)
+{
+  int left = x < WR_RESIZE_BORDER;
+  int right = x >= w - WR_RESIZE_BORDER;
+  int top = y < WR_RESIZE_BORDER;
+  int bottom = y >= h - WR_RESIZE_BORDER;
+
+  if (top && left) return XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
+  if (top && right) return XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
+  if (bottom && left) return XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
+  if (bottom && right) return XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
+  if (top) return XDG_TOPLEVEL_RESIZE_EDGE_TOP;
+  if (bottom) return XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
+  if (left) return XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
+  if (right) return XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
+
+  return XDG_TOPLEVEL_RESIZE_EDGE_NONE;
+}
+
 static void pointer_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
                            uint32_t time, uint32_t button, uint32_t state)
 {
@@ -121,11 +147,60 @@ static void pointer_button(void *data, struct wl_pointer *wl_pointer, uint32_t s
       wr_window_get_size(w->app_window, &cur_w, &cur_h);
 
       if (button == BTN_LEFT && state == WL_POINTER_BUTTON_STATE_PRESSED) {
+        if (!g_maximized) {
+          uint32_t edge = get_resize_edge(g_pointer_x, g_pointer_y, cur_w, cur_h);
+          if (edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE && w->xdg_toplevel && g_seat) {
+            w->resize_edge = edge;
+            w->last_width = cur_w;
+            w->last_height = cur_h;
+            xdg_toplevel_resize(w->xdg_toplevel, g_seat, serial, edge);
+            break;
+          }
+        }
+
         if (g_pointer_y < WR_TITLEBAR_HEIGHT) {
-          int close_x = cur_w - WR_CLOSE_BTN_SIZE - 4;
-          if (g_pointer_x >= close_x && g_pointer_x < cur_w - 4) {
+          const float content_margin = 8.0f;
+          const float btn_radius = 6.0f;
+          const float btn_spacing = 8.0f;
+          const float btn_diameter = btn_radius * 2.0f;
+
+          float close_cx = (float)cur_w - content_margin - btn_radius;
+          float maximize_cx = close_cx - btn_diameter - btn_spacing;
+          float minimize_cx = maximize_cx - btn_diameter - btn_spacing;
+          float btn_cy = (float)WR_TITLEBAR_HEIGHT / 2.0f;
+
+          float dx, dy, dist_sq;
+          float radius_sq = btn_radius * btn_radius;
+
+          dx = (float)g_pointer_x - close_cx;
+          dy = (float)g_pointer_y - btn_cy;
+          dist_sq = dx * dx + dy * dy;
+          if (dist_sq <= radius_sq) {
             wr_window_set_should_close(w->app_window, 1);
-          } else if (w->xdg_toplevel && g_seat) {
+            break;
+          }
+
+          dx = (float)g_pointer_x - maximize_cx;
+          dy = (float)g_pointer_y - btn_cy;
+          dist_sq = dx * dx + dy * dy;
+          if (dist_sq <= radius_sq && w->xdg_toplevel) {
+            if (g_maximized) {
+              xdg_toplevel_unset_maximized(w->xdg_toplevel);
+            } else {
+              xdg_toplevel_set_maximized(w->xdg_toplevel);
+            }
+            break;
+          }
+
+          dx = (float)g_pointer_x - minimize_cx;
+          dy = (float)g_pointer_y - btn_cy;
+          dist_sq = dx * dx + dy * dy;
+          if (dist_sq <= radius_sq && w->xdg_toplevel) {
+            xdg_toplevel_set_minimized(w->xdg_toplevel);
+            break;
+          }
+
+          if (w->xdg_toplevel && g_seat && !g_maximized) {
             xdg_toplevel_move(w->xdg_toplevel, g_seat, serial);
           }
         }
@@ -359,6 +434,9 @@ static void* create_window(void* app_window, char* title, int width, int height)
   }
 
   data->app_window = (WrWindow*)app_window;
+  data->last_width = width;
+  data->last_height = height;
+  data->resize_edge = XDG_TOPLEVEL_RESIZE_EDGE_NONE;
 
   register_wayland_window(data);
 
@@ -381,6 +459,8 @@ static void* create_window(void* app_window, char* title, int width, int height)
     data->xdg_toplevel,
     title
   );
+
+  xdg_toplevel_set_min_size(data->xdg_toplevel, WR_MIN_WIDTH, WR_MIN_HEIGHT);
 
   wl_surface_commit(data->surface);
   wl_display_roundtrip(wr_wayland->display);
@@ -445,13 +525,55 @@ static void xdg_toplevel_close(void *data, struct xdg_toplevel *xdg_toplevel)
 static void xdg_toplevel_configure(void *data, struct xdg_toplevel *xdg_toplevel, int32_t width, int32_t height, struct wl_array *states)
 {
   (void)xdg_toplevel;
-  (void)states;
   WrWaylandWindowData *window = data;
   if (!window) return;
 
-  /* If compositor provided a suggested size, forward as an input event so
-     the application can update internal layout and renderer surfaces. */
+  g_maximized = 0;
+  int resizing = 0;
+  uint32_t *state;
+  wl_array_for_each(state, states) {
+    if (*state == XDG_TOPLEVEL_STATE_MAXIMIZED) {
+      g_maximized = 1;
+    }
+    if (*state == XDG_TOPLEVEL_STATE_RESIZING) {
+      resizing = 1;
+    }
+  }
+
   if (width > 0 && height > 0) {
+    int dx = 0, dy = 0;
+
+    if (resizing && window->resize_edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE) {
+      int dw = width - window->last_width;
+      int dh = height - window->last_height;
+
+      switch (window->resize_edge) {
+        case XDG_TOPLEVEL_RESIZE_EDGE_LEFT:
+          dx = -dw;
+          break;
+        case XDG_TOPLEVEL_RESIZE_EDGE_TOP:
+          dy = -dh;
+          break;
+        case XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT:
+          dx = -dw;
+          dy = -dh;
+          break;
+        case XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT:
+          dy = -dh;
+          break;
+        case XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT:
+          dx = -dw;
+          break;
+        default:
+          break;
+      }
+
+      window->last_width = width;
+      window->last_height = height;
+    } else {
+      window->resize_edge = XDG_TOPLEVEL_RESIZE_EDGE_NONE;
+    }
+
     WrInputEvent ev;
     ev.type = WR_INPUT_EVENT_WINDOW_RESIZE;
     ev.data.resize.width = width;
@@ -460,9 +582,8 @@ static void xdg_toplevel_configure(void *data, struct xdg_toplevel *xdg_toplevel
     if (window->app_window)
       wr_window_handle_input(window->app_window, &ev);
 
-    /* Resize the EGL window to match suggested size */
     if (window->egl_window)
-      wl_egl_window_resize(window->egl_window, width, height, 0, 0);
+      wl_egl_window_resize(window->egl_window, width, height, dx, dy);
   }
 }
 
