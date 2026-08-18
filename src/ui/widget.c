@@ -84,16 +84,21 @@ static void default_render(WrWidget* widget, WrRenderSurface* surface)
 	if (!batch)
 		return;
 
-	/* Draw background if color type */
 	if (widget->style.background.type == WR_BACKGROUND_COLOR) {
 		WrColor c = widget->style.background.color;
-		float x = 0.0f;
-		float y = 0.0f;
+		float x = widget->style.layout.margin.left + widget->style.layout.padding.left;
+		float y = widget->style.layout.margin.top + widget->style.layout.padding.top;
 		float w = widget->style.layout.width;
 		float h = widget->style.layout.height;
 		if (w <= 0.0f) w = 100.0f;
 		if (h <= 0.0f) h = 24.0f;
-		wr_batch_rect(batch, x, y, w, h, c);
+
+		float radius = widget->style.border.radius;
+		if (radius > 0.0f) {
+			wr_batch_rounded_rect(batch, x, y, w, h, radius, c);
+		} else {
+			wr_batch_rect(batch, x, y, w, h, c);
+		}
 	}
 
 	WrRenderer* renderer = wr_get_renderer();

@@ -16,15 +16,6 @@ typedef struct WrBackend {
   /* Resize the native window */
   void (*resize_window)(void*, int, int);
 
-  // void (*show_window)(void);
-  // void (*hide_window)(void);
-
-  // void (*set_title)(void);
-  // void (*set_size)(void);
-
-  // void (*request_redraw)(void);
-  // void (*get_window_size)(void);
-
 } WrBackend;
 
 WrBackend* wr_backend_init(void);

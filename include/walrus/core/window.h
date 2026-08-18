@@ -32,8 +32,18 @@ void wr_window_handle_input(WrWindow* window, WrInputEvent* ev);
 /* Query current window size. Returns 0 on success. */
 int wr_window_get_size(WrWindow* window, int* width, int* height);
 
-/* Manage child elements owned by the window */
+/* Check if window is currently maximized. */
+int wr_window_is_maximized(void);
+
+/* Manage child elements in content area */
 int wr_window_add_child(WrWindow* window, WrElement* element);
 int wr_window_remove_child(WrWindow* window, WrElement* element);
+
+/* Manage child elements in window decoration (title bar) */
+int wr_window_add_decoration(WrWindow* window, WrElement* element);
+int wr_window_remove_decoration(WrWindow* window, WrElement* element);
+
+/* Get content area bounds (where child widgets should render) */
+void wr_window_get_content_bounds(WrWindow* window, float* x, float* y, float* w, float* h);
 
 #endif
