@@ -58,7 +58,6 @@ int wr_batch_rect(
   if (!batch)
     return -1;
 
-  /* 4 vertices, 6 indices */
   if (ensure_vertices(batch, batch->vertex_count + 4) < 0)
     return -1;
   if (ensure_indices(batch, batch->index_count + 6) < 0)

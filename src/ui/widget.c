@@ -123,7 +123,6 @@ WrWidget* wr_create_widget(const char* selector)
 	w->remove_child = widget_remove_child;
 	w->set_parent = widget_set_parent;
 
-	/* Simple selector parsing: id/classes/name separated by '/'. */
 	if (selector) {
 		size_t sel_len = strlen(selector) + 1;
 		char* tmp = malloc(sel_len);
@@ -157,4 +156,3 @@ void wr_widget_destroy(WrWidget* widget)
 	free(widget->children);
 	free(widget);
 }
-

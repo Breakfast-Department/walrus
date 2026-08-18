@@ -1,6 +1,10 @@
 #ifndef WR_WAYLAND_H
 #define WR_WAYLAND_H
 
+#define WR_TITLEBAR_HEIGHT 32
+#define WR_BORDER_WIDTH 4
+#define WR_CLOSE_BTN_SIZE 24
+
 #include <walrus/backend/backend.h>
 #include <walrus/core/window.h>
 #include <wayland-client-protocol.h>
