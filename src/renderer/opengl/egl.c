@@ -4,6 +4,15 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef EGL_PLATFORM_WAYLAND_KHR
+#define EGL_PLATFORM_WAYLAND_KHR 0x31D8
+#endif
+
+typedef EGLDisplay (*PFNEGLGETPLATFORMDISPLAYEXTPROC)(EGLenum platform, void *native_display, const EGLint *attrib_list);
+typedef EGLSurface (*PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC)(EGLDisplay display, EGLConfig config, void *native_window, const EGLint *attrib_list);
+
+static int g_use_platform_surface = 0;
+
 static void wr_egl_reset(WrEGL *egl)
 {
   egl->display = EGL_NO_DISPLAY;
@@ -31,9 +40,22 @@ int wr_egl_init(WrEGL *egl, void *native_display)
     return -1;
   }
 
-  egl->display = eglGetDisplay(
-    (EGLNativeDisplayType)native_display
-  );
+  PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT =
+    (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
+
+  if (eglGetPlatformDisplayEXT)
+  {
+    egl->display = eglGetPlatformDisplayEXT(
+      EGL_PLATFORM_WAYLAND_KHR,
+      native_display,
+      NULL
+    );
+    if (egl->display != EGL_NO_DISPLAY)
+      g_use_platform_surface = 1;
+  }
+
+  if (egl->display == EGL_NO_DISPLAY)
+    egl->display = eglGetDisplay((EGLNativeDisplayType)native_display);
 
   if (egl->display == EGL_NO_DISPLAY)
   {
@@ -53,9 +75,6 @@ int wr_egl_init(WrEGL *egl, void *native_display)
     return -1;
   }
 
-  /*
-    * Kita akan menggunakan OpenGL, bukan OpenGL ES.
-    */
   if (!eglBindAPI(EGL_OPENGL_API))
   {
     fprintf(stderr, "Failed to bind OpenGL API\n");
@@ -112,12 +131,30 @@ int wr_egl_create_surface(
     return -1;
   }
 
-  egl->surface = eglCreateWindowSurface(
-    egl->display,
-    egl->config,
-    (EGLNativeWindowType)native_window,
-    NULL
-  );
+  if (g_use_platform_surface)
+  {
+    PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC eglCreatePlatformWindowSurfaceEXT =
+      (PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC)eglGetProcAddress("eglCreatePlatformWindowSurfaceEXT");
+    if (eglCreatePlatformWindowSurfaceEXT)
+    {
+      egl->surface = eglCreatePlatformWindowSurfaceEXT(
+        egl->display,
+        egl->config,
+        native_window,
+        NULL
+      );
+    }
+  }
+
+  if (egl->surface == EGL_NO_SURFACE)
+  {
+    egl->surface = eglCreateWindowSurface(
+      egl->display,
+      egl->config,
+      (EGLNativeWindowType)native_window,
+      NULL
+    );
+  }
 
   if (egl->surface == EGL_NO_SURFACE)
   {

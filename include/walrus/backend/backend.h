@@ -13,14 +13,8 @@ typedef struct WrBackend {
   void* (*get_native_display)(void);
   void* (*get_native_window)(void*);
 
-  // void (*show_window)(void);
-  // void (*hide_window)(void);
-
-  // void (*set_title)(void);
-  // void (*set_size)(void);
-
-  // void (*request_redraw)(void);
-  // void (*get_window_size)(void);
+  /* Resize the native window */
+  void (*resize_window)(void*, int, int);
 
 } WrBackend;
 

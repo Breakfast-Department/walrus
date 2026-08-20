@@ -12,4 +12,6 @@ int wr_begin_frame(WrRenderSurface *surface);
 int wr_end_frame(WrRenderSurface *surface);
 void wr_clear(float r, float g, float b, float a);
 
+void wr_render(void);
+
 #endif

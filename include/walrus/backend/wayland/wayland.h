@@ -1,6 +1,13 @@
 #ifndef WR_WAYLAND_H
 #define WR_WAYLAND_H
 
+#define WR_TITLEBAR_HEIGHT 32
+#define WR_BORDER_WIDTH 4
+#define WR_CLOSE_BTN_SIZE 24
+#define WR_RESIZE_BORDER 8
+#define WR_MIN_WIDTH 150
+#define WR_MIN_HEIGHT 80
+
 #include <walrus/backend/backend.h>
 #include <walrus/core/window.h>
 #include <wayland-client-protocol.h>
@@ -21,6 +28,8 @@ typedef struct WrWaylandWindowData {
   struct xdg_toplevel *xdg_toplevel;
   struct wl_egl_window *egl_window;
   WrWindow *app_window;
+  int last_width, last_height;
+  uint32_t resize_edge;
 } WrWaylandWindowData;
 
 #endif
