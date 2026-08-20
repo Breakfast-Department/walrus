@@ -79,6 +79,8 @@ void wr_poll_events(void)
 
 void wr_shutdown(void)
 {
+  wr_font_shutdown();
+
   WrRenderer* renderer = wr_get_renderer();
   if (renderer && renderer->shutdown)
     renderer->shutdown();

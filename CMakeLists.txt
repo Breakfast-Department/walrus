@@ -19,6 +19,7 @@ option(WALRUS_ENABLE_X11 "Enable X11 backend" ON)
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(EGL REQUIRED egl)
+pkg_check_modules(FREETYPE REQUIRED freetype2)
 
 set(WALRUS_SOURCES
   src/walrus.c
@@ -37,6 +38,10 @@ set(WALRUS_SOURCES
 
   # UI sources
   src/ui/widget.c
+
+  # Text sources
+  src/text/font.c
+  src/text/text.c
 
   # External sources
   external/glad/src/egl.c
@@ -111,16 +116,19 @@ target_include_directories(walrus
   PRIVATE
     ${PROJECT_SOURCE_DIR}/external/glad/include
     ${EGL_INCLUDE_DIRS}
+    ${FREETYPE_INCLUDE_DIRS}
     ${WALRUS_INCLUDE_DIRS}
 )
 
 target_link_directories(walrus PRIVATE
   ${EGL_LIBRARY_DIRS}
+  ${FREETYPE_LIBRARY_DIRS}
   ${WALRUS_LIBRARY_DIRS}
 )
 
 target_link_libraries(walrus PRIVATE
   ${EGL_LIBRARIES}
+  ${FREETYPE_LIBRARIES}
   ${WALRUS_LIBRARIES}
 )
 
