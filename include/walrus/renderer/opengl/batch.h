@@ -14,6 +14,8 @@ typedef struct WrBatch {
 
   size_t index_count;
   size_t index_capacity;
+
+  uint32_t font_texture;
 } WrBatch;
 
 #endif
