@@ -1,0 +1,24 @@
+# Global default owners
+*                       @ezravln
+
+# Public API & Core Framework
+/include/               @ezravln @yusuf601
+/src/core/              @ezravln @yusuf601
+
+# Backends
+/src/backend/           @ezravln @yusuf601
+/src/backend/wayland/   @ezravln @yusuf601
+/src/backend/x11/       @ezravln @yusuf601
+
+# Renderer
+/src/renderer/          @ezravln @yusuf601
+
+# Examples & Build System
+/examples/              @ezravln @yusuf601
+/CMakeLists.txt         @ezravln @yusuf601
+/Makefile               @ezravln @yusuf601
+/.github/               @ezravln @yusuf601
+
+# Documentation
+/docs/                  @ezravln @yusuf601
+*.md                    @ezravln @yusuf601
