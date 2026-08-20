@@ -3,11 +3,8 @@
 #include "walrus/backend/wayland/wayland.h"
 #include "walrus/renderer/renderer.h"
 #include "walrus/renderer/batch.h"
-#include "walrus/text/font.h"
-#include "walrus/text/text.h"
 #include "walrus/ui/widget.h"
 #include "walrus/walrus.h"
-#include <glad/glad.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -219,29 +216,7 @@ int wr_window_get_size(WrWindow* window, int* width, int* height)
   return 0;
 }
 
-static WrFont* g_ui_font = NULL;
-
-static void ensure_ui_font(void)
-{
-  if (g_ui_font)
-    return;
-
-  const char* font_paths[] = {
-    "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
-    "/usr/share/fonts/TTF/DejaVuSans.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    "/usr/share/fonts/noto/NotoSans-Regular.ttf",
-    NULL
-  };
-
-  for (int i = 0; font_paths[i]; i++) {
-    g_ui_font = wr_font_load(font_paths[i], 13.0f);
-    if (g_ui_font)
-      break;
-  }
-}
-
-static void draw_decorations(WrRenderSurface* surface, WrWindow* window)
+static void draw_decorations(WrRenderSurface* surface, int width, int height)
 {
   WrRenderer* renderer = wr_get_renderer();
   if (!renderer || !renderer->draw_batch) return;
@@ -249,8 +224,6 @@ static void draw_decorations(WrRenderSurface* surface, WrWindow* window)
   WrBatch* batch = wr_batch_create();
   if (!batch) return;
 
-  int width = window->width;
-  int height = window->height;
   int maximized = wr_window_is_maximized();
 
   const float corner_radius = maximized ? 0.0f : 16.0f;
@@ -307,16 +280,6 @@ static void draw_decorations(WrRenderSurface* surface, WrWindow* window)
       content_radius - border_width, content_bg);
   }
 
-  /* Draw window title */
-  ensure_ui_font();
-  if (g_ui_font && window->title) {
-    WrColor title_color = {0.85f, 0.85f, 0.87f, 1.0f};
-    float title_x = (float)width / 2.0f;
-    float title_y = (float)WR_TITLEBAR_HEIGHT / 2.0f;
-    wr_batch_text_aligned(batch, g_ui_font, window->title, title_x, title_y,
-      title_color, WR_TEXT_ALIGN_CENTER, WR_TEXT_BASELINE_MIDDLE);
-  }
-
   renderer->draw_batch(surface, batch);
   wr_batch_destroy(batch);
 }
@@ -333,7 +296,7 @@ void wr_render(void)
 
     wr_clear(0.1f, 0.1f, 0.12f, 1.0f);
 
-    draw_decorations(window->render_surface, window);
+    draw_decorations(window->render_surface, window->width, window->height);
 
     for (unsigned int j = 0; j < window->decoration_child_count; ++j)
     {
@@ -350,15 +313,6 @@ void wr_render(void)
     float content_x, content_y, content_w, content_h;
     wr_window_get_content_bounds(window, &content_x, &content_y, &content_w, &content_h);
 
-    /* Enable scissor test to clip children to content area */
-    glEnable(GL_SCISSOR_TEST);
-    glScissor(
-      (GLint)content_x,
-      (GLint)(window->height - content_y - content_h),
-      (GLsizei)content_w,
-      (GLsizei)content_h
-    );
-
     for (unsigned int j = 0; j < window->child_count; ++j)
     {
       WrElement* el = window->children[j];
@@ -373,8 +327,6 @@ void wr_render(void)
         }
       }
     }
-
-    glDisable(GL_SCISSOR_TEST);
 
     wr_end_frame(window->render_surface);
   }
@@ -462,12 +414,4 @@ void wr_window_get_content_bounds(WrWindow* window, float* x, float* y, float* w
   if (y) *y = cy;
   if (w) *w = cw;
   if (h) *h = ch;
-}
-
-void wr_window_cleanup_ui(void)
-{
-  if (g_ui_font) {
-    wr_font_destroy(g_ui_font);
-    g_ui_font = NULL;
-  }
 }
