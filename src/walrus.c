@@ -6,6 +6,7 @@
 
 #include <walrus/walrus.h>
 #include "walrus/core/window.h"
+#include "walrus/text/font.h"
 #include "walrus/ui/widget.h"
 
 static volatile sig_atomic_t g_walrus_sigint = 0;
@@ -79,6 +80,8 @@ void wr_poll_events(void)
 
 void wr_shutdown(void)
 {
+  wr_font_shutdown();
+
   WrRenderer* renderer = wr_get_renderer();
   if (renderer && renderer->shutdown)
     renderer->shutdown();

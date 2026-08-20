@@ -1,6 +1,7 @@
 #ifndef WR_RENDERER_BATCH_H
 #define WR_RENDERER_BATCH_H
 
+#include <stdint.h>
 #include <walrus/renderer/renderer.h>
 #include <walrus/ui/style.h>
 
@@ -33,5 +34,8 @@ int wr_batch_circle(
   float radius,
   WrColor color
 );
+
+/* Set the font texture for text rendering */
+void wr_batch_set_font_texture(WrBatch* batch, uint32_t texture);
 
 #endif
