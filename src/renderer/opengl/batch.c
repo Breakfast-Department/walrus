@@ -178,3 +178,9 @@ int wr_batch_circle(
 
   return 0;
 }
+
+void wr_batch_set_font_texture(WrBatch* batch, uint32_t texture)
+{
+  if (batch)
+    batch->font_texture = texture;
+}
