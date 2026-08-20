@@ -7,6 +7,7 @@
 #include "walrus/walrus.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 struct WrWindow {
   char* title;

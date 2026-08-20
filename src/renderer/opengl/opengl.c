@@ -266,6 +266,10 @@ static void wr_opengl_draw_batch(
   glUniform2f(u_viewport, (float)viewport[2], (float)viewport[3]);
   glDrawElements(GL_TRIANGLES, (GLsizei)batch->index_count, GL_UNSIGNED_INT, 0);
 
+  if (batch->font_texture) {
+    glBindTexture(GL_TEXTURE_2D, 0);
+  }
+
   glBindVertexArray(0);
   glDisable(GL_BLEND);
 }

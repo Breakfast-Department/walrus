@@ -1,6 +1,7 @@
 #ifndef WR_RENDERER_BATCH_H
 #define WR_RENDERER_BATCH_H
 
+#include <stdint.h>
 #include <walrus/renderer/renderer.h>
 #include <walrus/ui/style.h>
 
