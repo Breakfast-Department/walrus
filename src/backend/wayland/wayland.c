@@ -8,6 +8,7 @@
 #include <wayland-client-core.h>
 #include <wayland-client-protocol.h>
 #include <wayland-egl.h>
+#include <linux/input-event-codes.h>
 
 static WrWayland *wr_wayland = NULL;
 
@@ -48,6 +49,207 @@ static const struct wl_registry_listener registry_listener = {
   .global = registry_add,
   .global_remove = registry_remove,
 };
+
+static WrWaylandWindowData** g_wayland_windows = NULL;
+static unsigned int g_wayland_window_count = 0;
+
+static struct wl_seat *g_seat = NULL;
+static struct wl_pointer *g_pointer = NULL;
+static int g_pointer_x = 0;
+static int g_pointer_y = 0;
+static struct wl_surface *g_pointer_surface = NULL;
+static uint32_t g_last_button_serial = 0;
+
+static void register_wayland_window(WrWaylandWindowData* w) {
+  WrWaylandWindowData **nw = realloc(g_wayland_windows, sizeof(*nw) * (g_wayland_window_count + 1));
+  if (!nw) return;
+  g_wayland_windows = nw;
+  g_wayland_windows[g_wayland_window_count++] = w;
+}
+
+static void unregister_wayland_window(WrWaylandWindowData* w) {
+  if (!g_wayland_windows) return;
+  unsigned int i, j = 0;
+  for (i = 0; i < g_wayland_window_count; ++i) {
+    if (g_wayland_windows[i] == w) continue;
+    g_wayland_windows[j++] = g_wayland_windows[i];
+  }
+  g_wayland_window_count = j;
+  if (j == 0) { free(g_wayland_windows); g_wayland_windows = NULL; }
+  else {
+    WrWaylandWindowData **shr = realloc(g_wayland_windows, sizeof(*shr) * j);
+    if (shr) g_wayland_windows = shr;
+  }
+}
+
+/* pointer listener callbacks */
+static void pointer_enter(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
+                         struct wl_surface *surface, wl_fixed_t surface_x, wl_fixed_t surface_y)
+{
+  (void)data; (void)wl_pointer; (void)serial;
+  g_pointer_surface = surface;
+  g_pointer_x = wl_fixed_to_int(surface_x);
+  g_pointer_y = wl_fixed_to_int(surface_y);
+}
+
+static void pointer_leave(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
+                         struct wl_surface *surface)
+{
+  (void)data; (void)wl_pointer; (void)serial; (void)surface;
+  g_pointer_surface = NULL;
+}
+
+static void pointer_motion(void *data, struct wl_pointer *wl_pointer, uint32_t time,
+                           wl_fixed_t surface_x, wl_fixed_t surface_y)
+{
+  (void)data; (void)wl_pointer; (void)time;
+  g_pointer_x = wl_fixed_to_int(surface_x);
+  g_pointer_y = wl_fixed_to_int(surface_y);
+}
+
+static int g_maximized = 0;
+
+int wr_window_is_maximized(void)
+{
+  return g_maximized;
+}
+
+static uint32_t get_resize_edge(int x, int y, int w, int h)
+{
+  int left = x < WR_RESIZE_BORDER;
+  int right = x >= w - WR_RESIZE_BORDER;
+  int top = y < WR_RESIZE_BORDER;
+  int bottom = y >= h - WR_RESIZE_BORDER;
+
+  if (top && left) return XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
+  if (top && right) return XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
+  if (bottom && left) return XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
+  if (bottom && right) return XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
+  if (top) return XDG_TOPLEVEL_RESIZE_EDGE_TOP;
+  if (bottom) return XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
+  if (left) return XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
+  if (right) return XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
+
+  return XDG_TOPLEVEL_RESIZE_EDGE_NONE;
+}
+
+static void pointer_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
+                           uint32_t time, uint32_t button, uint32_t state)
+{
+  (void)data; (void)wl_pointer; (void)time;
+  g_last_button_serial = serial;
+
+  for (unsigned int i = 0; i < g_wayland_window_count; ++i) {
+    WrWaylandWindowData* w = g_wayland_windows[i];
+    if (!w || !w->app_window) continue;
+    if (g_pointer_surface == w->surface) {
+      int cur_w = 0, cur_h = 0;
+      wr_window_get_size(w->app_window, &cur_w, &cur_h);
+
+      if (button == BTN_LEFT && state == WL_POINTER_BUTTON_STATE_PRESSED) {
+        if (!g_maximized) {
+          uint32_t edge = get_resize_edge(g_pointer_x, g_pointer_y, cur_w, cur_h);
+          if (edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE && w->xdg_toplevel && g_seat) {
+            w->resize_edge = edge;
+            w->last_width = cur_w;
+            w->last_height = cur_h;
+            xdg_toplevel_resize(w->xdg_toplevel, g_seat, serial, edge);
+            break;
+          }
+        }
+
+        if (g_pointer_y < WR_TITLEBAR_HEIGHT) {
+          const float content_margin = 8.0f;
+          const float btn_radius = 6.0f;
+          const float btn_spacing = 8.0f;
+          const float btn_diameter = btn_radius * 2.0f;
+
+          float close_cx = (float)cur_w - content_margin - btn_radius;
+          float maximize_cx = close_cx - btn_diameter - btn_spacing;
+          float minimize_cx = maximize_cx - btn_diameter - btn_spacing;
+          float btn_cy = (float)WR_TITLEBAR_HEIGHT / 2.0f;
+
+          float dx, dy, dist_sq;
+          float radius_sq = btn_radius * btn_radius;
+
+          dx = (float)g_pointer_x - close_cx;
+          dy = (float)g_pointer_y - btn_cy;
+          dist_sq = dx * dx + dy * dy;
+          if (dist_sq <= radius_sq) {
+            wr_window_set_should_close(w->app_window, 1);
+            break;
+          }
+
+          dx = (float)g_pointer_x - maximize_cx;
+          dy = (float)g_pointer_y - btn_cy;
+          dist_sq = dx * dx + dy * dy;
+          if (dist_sq <= radius_sq && w->xdg_toplevel) {
+            if (g_maximized) {
+              xdg_toplevel_unset_maximized(w->xdg_toplevel);
+            } else {
+              xdg_toplevel_set_maximized(w->xdg_toplevel);
+            }
+            break;
+          }
+
+          dx = (float)g_pointer_x - minimize_cx;
+          dy = (float)g_pointer_y - btn_cy;
+          dist_sq = dx * dx + dy * dy;
+          if (dist_sq <= radius_sq && w->xdg_toplevel) {
+            xdg_toplevel_set_minimized(w->xdg_toplevel);
+            break;
+          }
+
+          if (w->xdg_toplevel && g_seat && !g_maximized) {
+            xdg_toplevel_move(w->xdg_toplevel, g_seat, serial);
+          }
+        }
+      }
+      break;
+    }
+  }
+}
+
+static void pointer_axis(void *data, struct wl_pointer *wl_pointer, uint32_t time,
+                         uint32_t axis, wl_fixed_t value)
+{
+  (void)data; (void)wl_pointer; (void)time; (void)axis; (void)value;
+}
+
+static const struct wl_pointer_listener pointer_listener = {
+  .enter = pointer_enter,
+  .leave = pointer_leave,
+  .motion = pointer_motion,
+  .button = pointer_button,
+  .axis = pointer_axis,
+};
+
+/* seat listener */
+static void seat_capabilities(void *data, struct wl_seat *seat, uint32_t caps)
+{
+  (void)data;
+  if (caps & WL_SEAT_CAPABILITY_POINTER) {
+    if (!g_pointer && seat) {
+      g_pointer = wl_seat_get_pointer(seat);
+      wl_pointer_add_listener(g_pointer, &pointer_listener, NULL);
+    }
+  } else {
+    if (g_pointer) {
+      wl_pointer_destroy(g_pointer);
+      g_pointer = NULL;
+    }
+  }
+}
+
+static void seat_name(void *data, struct wl_seat *seat, const char *name)
+{
+  (void)data; (void)seat; (void)name;
+}
+
+static const struct wl_seat_listener seat_listener = {
+  .capabilities = seat_capabilities,
+  .name = seat_name,
+};
 static void registry_add(
   void *data,
   struct wl_registry *registry,
@@ -76,6 +278,17 @@ static void registry_add(
       &xdg_wm_base_interface,
       1
     );
+  }
+  else if (strcmp(interface, wl_seat_interface.name) == 0)
+  {
+    g_seat = wl_registry_bind(
+      registry,
+      name,
+      &wl_seat_interface,
+      1
+    );
+    if (g_seat)
+      wl_seat_add_listener(g_seat, &seat_listener, NULL);
   }
 }
 
@@ -220,11 +433,13 @@ static void* create_window(void* app_window, char* title, int width, int height)
     return NULL;
   }
 
-  /* associate app window so listeners can update its state */
   data->app_window = (WrWindow*)app_window;
+  data->last_width = width;
+  data->last_height = height;
+  data->resize_edge = XDG_TOPLEVEL_RESIZE_EDGE_NONE;
 
-  /* listen for toplevel events (configure/close) immediately to avoid
-     missing callbacks if compositor sends events right away */
+  register_wayland_window(data);
+
   xdg_toplevel_add_listener(data->xdg_toplevel, &xdg_toplevel_listener, data);
 
   data->egl_window = wl_egl_window_create(data->surface, width, height);
@@ -245,12 +460,17 @@ static void* create_window(void* app_window, char* title, int width, int height)
     title
   );
 
+  xdg_toplevel_set_min_size(data->xdg_toplevel, WR_MIN_WIDTH, WR_MIN_HEIGHT);
+
   wl_surface_commit(data->surface);
+  wl_display_roundtrip(wr_wayland->display);
   return data;
 }
 
 static void destroy_window(void* ptr_data) {
   WrWaylandWindowData* data = ptr_data;
+
+  unregister_wayland_window(data);
 
   if (data->egl_window)
     wl_egl_window_destroy(data->egl_window);
@@ -271,6 +491,13 @@ static void* get_native_window(void* ptr_data)
 {
   WrWaylandWindowData* data = ptr_data;
   return data ? data->egl_window : NULL;
+}
+
+static void wr_wayland_resize_window(void* ptr_data, int width, int height)
+{
+  WrWaylandWindowData* data = ptr_data;
+  if (!data || !data->egl_window) return;
+  wl_egl_window_resize(data->egl_window, width, height, 0, 0);
 }
 
 static void xdg_surface_configure(
@@ -297,12 +524,67 @@ static void xdg_toplevel_close(void *data, struct xdg_toplevel *xdg_toplevel)
 
 static void xdg_toplevel_configure(void *data, struct xdg_toplevel *xdg_toplevel, int32_t width, int32_t height, struct wl_array *states)
 {
-  (void)data;
   (void)xdg_toplevel;
-  (void)width;
-  (void)height;
-  (void)states;
-  /* No-op: compositor suggests size/state, application may ignore. */
+  WrWaylandWindowData *window = data;
+  if (!window) return;
+
+  g_maximized = 0;
+  int resizing = 0;
+  uint32_t *state;
+  wl_array_for_each(state, states) {
+    if (*state == XDG_TOPLEVEL_STATE_MAXIMIZED) {
+      g_maximized = 1;
+    }
+    if (*state == XDG_TOPLEVEL_STATE_RESIZING) {
+      resizing = 1;
+    }
+  }
+
+  if (width > 0 && height > 0) {
+    int dx = 0, dy = 0;
+
+    if (resizing && window->resize_edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE) {
+      int dw = width - window->last_width;
+      int dh = height - window->last_height;
+
+      switch (window->resize_edge) {
+        case XDG_TOPLEVEL_RESIZE_EDGE_LEFT:
+          dx = -dw;
+          break;
+        case XDG_TOPLEVEL_RESIZE_EDGE_TOP:
+          dy = -dh;
+          break;
+        case XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT:
+          dx = -dw;
+          dy = -dh;
+          break;
+        case XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT:
+          dy = -dh;
+          break;
+        case XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT:
+          dx = -dw;
+          break;
+        default:
+          break;
+      }
+
+      window->last_width = width;
+      window->last_height = height;
+    } else {
+      window->resize_edge = XDG_TOPLEVEL_RESIZE_EDGE_NONE;
+    }
+
+    WrInputEvent ev;
+    ev.type = WR_INPUT_EVENT_WINDOW_RESIZE;
+    ev.data.resize.width = width;
+    ev.data.resize.height = height;
+
+    if (window->app_window)
+      wr_window_handle_input(window->app_window, &ev);
+
+    if (window->egl_window)
+      wl_egl_window_resize(window->egl_window, width, height, dx, dy);
+  }
 }
 
 static void* get_native_display(void)
@@ -317,5 +599,6 @@ WrBackend wr_wayland_backend = {
   .create_window = create_window,
   .destroy_window = destroy_window,
   .get_native_display = get_native_display,
-  .get_native_window = get_native_window
+  .get_native_window = get_native_window,
+  .resize_window = wr_wayland_resize_window
 };

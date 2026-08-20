@@ -110,7 +110,15 @@ static int wr_opengl_begin_frame(
     return -1;
 
   EGLSurface egl_surface = *(EGLSurface*)surface->renderer_data;
-  return wr_egl_make_current(&wr_egl, egl_surface);
+  if (wr_egl_make_current(&wr_egl, egl_surface) < 0)
+    return -1;
+
+  EGLint width, height;
+  eglQuerySurface(wr_egl.display, egl_surface, EGL_WIDTH, &width);
+  eglQuerySurface(wr_egl.display, egl_surface, EGL_HEIGHT, &height);
+  glViewport(0, 0, width, height);
+
+  return 0;
 }
 
 static int wr_opengl_end_frame(
@@ -126,6 +134,7 @@ static int wr_opengl_end_frame(
 
 static void wr_opengl_clear(float r, float g, float b, float a)
 {
+  glDisable(GL_BLEND);
   glClearColor(r, g, b, a);
   glClear(GL_COLOR_BUFFER_BIT);
 }
@@ -142,6 +151,7 @@ static void wr_opengl_draw_batch(
   static GLuint vao = 0;
   static GLuint vbo = 0;
   static GLuint ebo = 0;
+  static GLint u_viewport = -1;
 
   if (prog == 0)
   {
@@ -150,14 +160,57 @@ static void wr_opengl_draw_batch(
       "layout(location = 0) in vec2 aPos;\n"
       "layout(location = 1) in vec4 aColor;\n"
       "layout(location = 2) in vec2 aUV;\n"
+      "layout(location = 3) in vec4 aRect;\n"
+      "layout(location = 4) in float aRadius;\n"
+      "layout(location = 5) in float aShapeType;\n"
+      "uniform vec2 uViewport;\n"
       "out vec4 vColor;\n"
-      "void main() { vColor = aColor; gl_Position = vec4(aPos, 0.0, 1.0); }\n";
+      "out vec2 vPixelPos;\n"
+      "out vec4 vRect;\n"
+      "out float vRadius;\n"
+      "out float vShapeType;\n"
+      "void main() {\n"
+      "  vColor = aColor;\n"
+      "  vPixelPos = aPos;\n"
+      "  vRect = aRect;\n"
+      "  vRadius = aRadius;\n"
+      "  vShapeType = aShapeType;\n"
+      "  vec2 ndc = (aPos / uViewport) * 2.0 - 1.0;\n"
+      "  ndc.y = -ndc.y;\n"
+      "  gl_Position = vec4(ndc, 0.0, 1.0);\n"
+      "}\n";
 
     const char *fsrc =
       "#version 330 core\n"
       "in vec4 vColor;\n"
+      "in vec2 vPixelPos;\n"
+      "in vec4 vRect;\n"
+      "in float vRadius;\n"
+      "in float vShapeType;\n"
       "out vec4 FragColor;\n"
-      "void main() { FragColor = vColor; }\n";
+      "float sdf_rounded_rect(vec2 p, vec2 center, vec2 half_size, float r) {\n"
+      "  vec2 d = abs(p - center) - half_size + r;\n"
+      "  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r;\n"
+      "}\n"
+      "float sdf_circle(vec2 p, vec2 center, float r) {\n"
+      "  return length(p - center) - r;\n"
+      "}\n"
+      "void main() {\n"
+      "  float alpha = vColor.a;\n"
+      "  if (vShapeType > 0.5) {\n"
+      "    vec2 center = vRect.xy + vRect.zw * 0.5;\n"
+      "    float d;\n"
+      "    if (vShapeType < 1.5) {\n"
+      "      vec2 half_size = vRect.zw * 0.5;\n"
+      "      d = sdf_rounded_rect(vPixelPos, center, half_size, vRadius);\n"
+      "    } else {\n"
+      "      d = sdf_circle(vPixelPos, center, vRadius);\n"
+      "    }\n"
+      "    float aa = 1.0;\n"
+      "    alpha *= 1.0 - smoothstep(-aa, aa, d);\n"
+      "  }\n"
+      "  FragColor = vec4(vColor.rgb, alpha);\n"
+      "}\n";
 
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vs, 1, &vsrc, NULL);
@@ -175,10 +228,18 @@ static void wr_opengl_draw_batch(
     glDeleteShader(vs);
     glDeleteShader(fs);
 
+    u_viewport = glGetUniformLocation(prog, "uViewport");
+
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glGenBuffers(1, &ebo);
   }
+
+  GLint viewport[4];
+  glGetIntegerv(GL_VIEWPORT, viewport);
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   glBindVertexArray(vao);
 
@@ -188,18 +249,25 @@ static void wr_opengl_draw_batch(
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, batch->index_count * sizeof(uint32_t), batch->indices, GL_DYNAMIC_DRAW);
 
-  /* vertex layout: x,y (2), r,g,b,a (4), u,v (2) */
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(WrVertex), (void*)offsetof(WrVertex, x));
   glEnableVertexAttribArray(1);
   glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(WrVertex), (void*)offsetof(WrVertex, r));
   glEnableVertexAttribArray(2);
   glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(WrVertex), (void*)offsetof(WrVertex, u));
+  glEnableVertexAttribArray(3);
+  glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(WrVertex), (void*)offsetof(WrVertex, rect_x));
+  glEnableVertexAttribArray(4);
+  glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(WrVertex), (void*)offsetof(WrVertex, radius));
+  glEnableVertexAttribArray(5);
+  glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(WrVertex), (void*)offsetof(WrVertex, shape_type));
 
   glUseProgram(prog);
+  glUniform2f(u_viewport, (float)viewport[2], (float)viewport[3]);
   glDrawElements(GL_TRIANGLES, (GLsizei)batch->index_count, GL_UNSIGNED_INT, 0);
 
   glBindVertexArray(0);
+  glDisable(GL_BLEND);
 }
 
 WrRenderer wr_opengl_renderer = {
