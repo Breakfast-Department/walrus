@@ -6,6 +6,7 @@
 
 #include <walrus/walrus.h>
 #include "walrus/core/window.h"
+#include "walrus/text/font.h"
 #include "walrus/ui/widget.h"
 
 static volatile sig_atomic_t g_walrus_sigint = 0;

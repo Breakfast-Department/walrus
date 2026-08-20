@@ -35,4 +35,7 @@ int wr_batch_circle(
   WrColor color
 );
 
+/* Set the font texture for text rendering */
+void wr_batch_set_font_texture(WrBatch* batch, uint32_t texture);
+
 #endif

@@ -135,6 +135,10 @@ static int wr_opengl_end_frame(
 static void wr_opengl_clear(float r, float g, float b, float a)
 {
   glDisable(GL_BLEND);
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_STENCIL_TEST);
+  glDisable(GL_SCISSOR_TEST);
+  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   glClearColor(r, g, b, a);
   glClear(GL_COLOR_BUFFER_BIT);
 }
@@ -152,6 +156,7 @@ static void wr_opengl_draw_batch(
   static GLuint vbo = 0;
   static GLuint ebo = 0;
   static GLint u_viewport = -1;
+  static GLint u_texture = -1;
 
   if (prog == 0)
   {
@@ -165,12 +170,14 @@ static void wr_opengl_draw_batch(
       "layout(location = 5) in float aShapeType;\n"
       "uniform vec2 uViewport;\n"
       "out vec4 vColor;\n"
+      "out vec2 vUV;\n"
       "out vec2 vPixelPos;\n"
       "out vec4 vRect;\n"
       "out float vRadius;\n"
       "out float vShapeType;\n"
       "void main() {\n"
       "  vColor = aColor;\n"
+      "  vUV = aUV;\n"
       "  vPixelPos = aPos;\n"
       "  vRect = aRect;\n"
       "  vRadius = aRadius;\n"
@@ -183,10 +190,12 @@ static void wr_opengl_draw_batch(
     const char *fsrc =
       "#version 330 core\n"
       "in vec4 vColor;\n"
+      "in vec2 vUV;\n"
       "in vec2 vPixelPos;\n"
       "in vec4 vRect;\n"
       "in float vRadius;\n"
       "in float vShapeType;\n"
+      "uniform sampler2D uTexture;\n"
       "out vec4 FragColor;\n"
       "float sdf_rounded_rect(vec2 p, vec2 center, vec2 half_size, float r) {\n"
       "  vec2 d = abs(p - center) - half_size + r;\n"
@@ -197,7 +206,10 @@ static void wr_opengl_draw_batch(
       "}\n"
       "void main() {\n"
       "  float alpha = vColor.a;\n"
-      "  if (vShapeType > 0.5) {\n"
+      "  if (vShapeType > 2.5) {\n"
+      "    float texAlpha = texture(uTexture, vUV).r;\n"
+      "    alpha *= texAlpha;\n"
+      "  } else if (vShapeType > 0.5) {\n"
       "    vec2 center = vRect.xy + vRect.zw * 0.5;\n"
       "    float d;\n"
       "    if (vShapeType < 1.5) {\n"
@@ -209,7 +221,7 @@ static void wr_opengl_draw_batch(
       "    float aa = 1.0;\n"
       "    alpha *= 1.0 - smoothstep(-aa, aa, d);\n"
       "  }\n"
-      "  FragColor = vec4(vColor.rgb, alpha);\n"
+      "  FragColor = vec4(vColor.rgb * alpha, alpha);\n"
       "}\n";
 
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
@@ -229,6 +241,7 @@ static void wr_opengl_draw_batch(
     glDeleteShader(fs);
 
     u_viewport = glGetUniformLocation(prog, "uViewport");
+    u_texture = glGetUniformLocation(prog, "uTexture");
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -239,7 +252,7 @@ static void wr_opengl_draw_batch(
   glGetIntegerv(GL_VIEWPORT, viewport);
 
   glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
   glBindVertexArray(vao);
 
@@ -264,6 +277,13 @@ static void wr_opengl_draw_batch(
 
   glUseProgram(prog);
   glUniform2f(u_viewport, (float)viewport[2], (float)viewport[3]);
+  glUniform1i(u_texture, 0);
+
+  if (batch->font_texture) {
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, batch->font_texture);
+  }
+
   glDrawElements(GL_TRIANGLES, (GLsizei)batch->index_count, GL_UNSIGNED_INT, 0);
 
   if (batch->font_texture) {
