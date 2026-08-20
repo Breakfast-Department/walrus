@@ -58,7 +58,6 @@ int wr_batch_rect(
   if (!batch)
     return -1;
 
-  /* 4 vertices, 6 indices */
   if (ensure_vertices(batch, batch->vertex_count + 4) < 0)
     return -1;
   if (ensure_indices(batch, batch->index_count + 6) < 0)
@@ -66,10 +65,99 @@ int wr_batch_rect(
 
   size_t vbase = batch->vertex_count;
 
-  WrVertex v0 = { x, y, color.r, color.g, color.b, color.a, 0.0f, 0.0f };
-  WrVertex v1 = { x + width, y, color.r, color.g, color.b, color.a, 1.0f, 0.0f };
-  WrVertex v2 = { x + width, y + height, color.r, color.g, color.b, color.a, 1.0f, 1.0f };
-  WrVertex v3 = { x, y + height, color.r, color.g, color.b, color.a, 0.0f, 1.0f };
+  WrVertex v0 = { x, y, color.r, color.g, color.b, color.a, 0.0f, 0.0f, 0, 0, 0, 0, 0.0f, 0.0f };
+  WrVertex v1 = { x + width, y, color.r, color.g, color.b, color.a, 1.0f, 0.0f, 0, 0, 0, 0, 0.0f, 0.0f };
+  WrVertex v2 = { x + width, y + height, color.r, color.g, color.b, color.a, 1.0f, 1.0f, 0, 0, 0, 0, 0.0f, 0.0f };
+  WrVertex v3 = { x, y + height, color.r, color.g, color.b, color.a, 0.0f, 1.0f, 0, 0, 0, 0, 0.0f, 0.0f };
+
+  batch->vertices[batch->vertex_count++] = v0;
+  batch->vertices[batch->vertex_count++] = v1;
+  batch->vertices[batch->vertex_count++] = v2;
+  batch->vertices[batch->vertex_count++] = v3;
+
+  uint32_t i0 = vbase + 0;
+  uint32_t i1 = vbase + 1;
+  uint32_t i2 = vbase + 2;
+  uint32_t i3 = vbase + 3;
+
+  batch->indices[batch->index_count++] = i0;
+  batch->indices[batch->index_count++] = i1;
+  batch->indices[batch->index_count++] = i2;
+  batch->indices[batch->index_count++] = i2;
+  batch->indices[batch->index_count++] = i3;
+  batch->indices[batch->index_count++] = i0;
+
+  return 0;
+}
+
+int wr_batch_rounded_rect(
+  WrBatch* batch,
+  float x, float y,
+  float width, float height,
+  float radius,
+  WrColor color
+)
+{
+  if (!batch)
+    return -1;
+
+  if (ensure_vertices(batch, batch->vertex_count + 4) < 0)
+    return -1;
+  if (ensure_indices(batch, batch->index_count + 6) < 0)
+    return -1;
+
+  size_t vbase = batch->vertex_count;
+
+  WrVertex v0 = { x, y, color.r, color.g, color.b, color.a, 0.0f, 0.0f, x, y, width, height, radius, 1.0f };
+  WrVertex v1 = { x + width, y, color.r, color.g, color.b, color.a, 1.0f, 0.0f, x, y, width, height, radius, 1.0f };
+  WrVertex v2 = { x + width, y + height, color.r, color.g, color.b, color.a, 1.0f, 1.0f, x, y, width, height, radius, 1.0f };
+  WrVertex v3 = { x, y + height, color.r, color.g, color.b, color.a, 0.0f, 1.0f, x, y, width, height, radius, 1.0f };
+
+  batch->vertices[batch->vertex_count++] = v0;
+  batch->vertices[batch->vertex_count++] = v1;
+  batch->vertices[batch->vertex_count++] = v2;
+  batch->vertices[batch->vertex_count++] = v3;
+
+  uint32_t i0 = vbase + 0;
+  uint32_t i1 = vbase + 1;
+  uint32_t i2 = vbase + 2;
+  uint32_t i3 = vbase + 3;
+
+  batch->indices[batch->index_count++] = i0;
+  batch->indices[batch->index_count++] = i1;
+  batch->indices[batch->index_count++] = i2;
+  batch->indices[batch->index_count++] = i2;
+  batch->indices[batch->index_count++] = i3;
+  batch->indices[batch->index_count++] = i0;
+
+  return 0;
+}
+
+int wr_batch_circle(
+  WrBatch* batch,
+  float cx, float cy,
+  float radius,
+  WrColor color
+)
+{
+  if (!batch)
+    return -1;
+
+  if (ensure_vertices(batch, batch->vertex_count + 4) < 0)
+    return -1;
+  if (ensure_indices(batch, batch->index_count + 6) < 0)
+    return -1;
+
+  float x = cx - radius;
+  float y = cy - radius;
+  float size = radius * 2.0f;
+
+  size_t vbase = batch->vertex_count;
+
+  WrVertex v0 = { x, y, color.r, color.g, color.b, color.a, 0.0f, 0.0f, x, y, size, size, radius, 2.0f };
+  WrVertex v1 = { x + size, y, color.r, color.g, color.b, color.a, 1.0f, 0.0f, x, y, size, size, radius, 2.0f };
+  WrVertex v2 = { x + size, y + size, color.r, color.g, color.b, color.a, 1.0f, 1.0f, x, y, size, size, radius, 2.0f };
+  WrVertex v3 = { x, y + size, color.r, color.g, color.b, color.a, 0.0f, 1.0f, x, y, size, size, radius, 2.0f };
 
   batch->vertices[batch->vertex_count++] = v0;
   batch->vertices[batch->vertex_count++] = v1;

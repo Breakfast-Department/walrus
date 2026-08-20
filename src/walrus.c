@@ -1,5 +1,20 @@
+#define _POSIX_C_SOURCE 200809L
+
+#include <string.h>
 #include <stdio.h>
+#include <signal.h>
+
 #include <walrus/walrus.h>
+#include "walrus/core/window.h"
+#include "walrus/ui/widget.h"
+
+static volatile sig_atomic_t g_walrus_sigint = 0;
+
+static void walrus_sigint_handler(int sig)
+{
+  (void)sig;
+  g_walrus_sigint = 1;
+}
 
 int wr_init(void)
 {
@@ -31,14 +46,35 @@ int wr_init(void)
     return -1;
   }
 
+  {
+    struct sigaction act;
+    memset(&act, 0, sizeof(act));
+    act.sa_handler = walrus_sigint_handler;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = 0;
+    sigaction(SIGINT, &act, NULL);
+  }
+
   return 0;
 }
 
 void wr_poll_events(void)
 {
   WrBackend* backend = wr_get_backend();
-  if (backend && backend->poll_events)
+  if (backend && backend->poll_events) {
+    sigset_t set, oldset;
+    sigemptyset(&set);
+    sigaddset(&set, SIGINT);
+    sigprocmask(SIG_BLOCK, &set, &oldset);
     backend->poll_events();
+    sigprocmask(SIG_SETMASK, &oldset, NULL);
+  }
+
+  if (g_walrus_sigint) {
+    extern void wr_request_close_all(void);
+    wr_request_close_all();
+    g_walrus_sigint = 0;
+  }
 }
 
 void wr_shutdown(void)
